@@ -49,29 +49,132 @@ std::map<std::string, std::vector<std::string>> readDataMatrixFile(const std::st
     return result;
 }
 
-int dmtx(const cv::Mat& cvImage, const std::vector<std::string>& data ) {
-    // Create libdmtx image
-    DmtxImage* image = dmtxImageCreate(
-        cvImage.data,
-        cvImage.cols,
-        cvImage.rows,
-        DmtxPack8bppK  // 8-bit grayscale
+std::vector<cv::Rect> findDataMatrixROIs_MSER(const cv::Mat& input)
+{
+    std::vector<cv::Rect> rois;
+
+    cv::Ptr<cv::MSER> mser = cv::MSER::create(
+        5,      // delta
+        100,    // min area
+        20000   // max area
     );
 
-    if (!image) {
-        throw std::runtime_error("Failed to create image");
+    std::vector<std::vector<cv::Point>> regions;
+    std::vector<cv::Rect> boxes;
+
+    mser->detectRegions(input, regions, boxes);
+
+    for (const cv::Rect& r : boxes)
+    {
+        if (r.width < 16 || r.height < 16)
+            continue;
+
+        float aspect = static_cast<float>(r.width) / r.height;
+        if (aspect < 0.5f || aspect > 2.0f)
+            continue;
+
+        rois.push_back(r);
     }
 
-    // Create decoder
-    DmtxDecode* decoder = dmtxDecodeCreate(image, 1);
-    if (!decoder) {
-        dmtxImageDestroy(&image);
-        throw std::runtime_error("Failed to create decoder");
+    return rois;
+}
+
+void mergeROIs(std::vector<cv::Rect>& rois)
+{
+    for (size_t i = 0; i < rois.size(); ++i)
+    {
+        for (size_t j = i + 1; j < rois.size(); )
+        {
+            cv::Rect intersection = rois[i] & rois[j];
+
+            if (intersection.area() > 0)
+            {
+                rois[i] = rois[i] | rois[j];
+                rois.erase(rois.begin() + j);
+            }
+            else
+            {
+                ++j;
+            }
+        }
     }
+}
+
+std::vector<cv::Rect> findDataMatrixROIs_Canny(const cv::Mat& input)
+{
+    std::vector<cv::Rect> rois;
+    cv::Mat blurImg, edges, morph;
+
+    cv::GaussianBlur(input, blurImg, cv::Size(3, 3), 0);
+    cv::Canny(blurImg, edges, 60, 160);
+
+    cv::Mat kernel = cv::getStructuringElement(
+        cv::MORPH_RECT, cv::Size(5, 5)
+    );
+    cv::morphologyEx(edges, morph, cv::MORPH_CLOSE, kernel);
+
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(
+        morph, contours,
+        cv::RETR_EXTERNAL,
+        cv::CHAIN_APPROX_SIMPLE
+    );
+
+    for (const std::vector<cv::Point>& c : contours)
+    {
+        double area = cv::contourArea(c);
+        if (area < 200)
+            continue;
+
+        cv::Rect r = cv::boundingRect(c);
+
+        float aspect = static_cast<float>(r.width) / r.height;
+        if (aspect < 0.5f || aspect > 2.0f)
+            continue;
+
+        rois.push_back(r);
+    }
+
+    return rois;
+}
+
+int dmtx(const cv::Mat& cvImage, const std::vector<std::string>& data ) {
+    std::vector<cv::Rect> rois;
+
+    std::vector<cv::Rect> mserROIs = findDataMatrixROIs_MSER(cvImage);
+    std::vector<cv::Rect> cannyROIs = findDataMatrixROIs_Canny(cvImage);
+
+    rois.insert(rois.end(), mserROIs.begin(), mserROIs.end());
+    rois.insert(rois.end(), cannyROIs.begin(), cannyROIs.end());
+
+    mergeROIs(rois);
 
     std::vector<std::string> tmpData;
+    for (auto& r : rois) {
+        cv::Mat roi = cvImage(r).clone();
 
-    for (int foundCodeCount = 0; foundCodeCount < data.size(); ++foundCodeCount) {
+        if (roi.cols < 120)
+        {
+            cv::resize(roi, roi, cv::Size(), 2.0, 2.0, cv::INTER_CUBIC);
+        }
+        // Create libdmtx image
+        DmtxImage* image = dmtxImageCreate(
+            roi.data,
+            roi.cols,
+            roi.rows,
+            DmtxPack8bppK  // 8-bit grayscale
+        );
+
+        if (!image) {
+            throw std::runtime_error("Failed to create image");
+        }
+
+        // Create decoder
+        DmtxDecode* decoder = dmtxDecodeCreate(image, 1);
+        if (!decoder) {
+            dmtxImageDestroy(&image);
+            throw std::runtime_error("Failed to create decoder");
+        }
 
         // Find the next Data Matrix symbol
         DmtxRegion* region = dmtxRegionFindNext(decoder, nullptr);
@@ -97,11 +200,11 @@ int dmtx(const cv::Mat& cvImage, const std::vector<std::string>& data ) {
         dmtxMessageDestroy(&message);
 
         dmtxRegionDestroy(&region);
-    }
 
-    // Cleanup
-    dmtxDecodeDestroy(&decoder);
-    dmtxImageDestroy(&image);
+        // Cleanup
+        dmtxDecodeDestroy(&decoder);
+        dmtxImageDestroy(&image);
+    }
 
     return tmpData.size();
 }

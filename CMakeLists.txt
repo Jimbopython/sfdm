@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.1)
+cmake_minimum_required(VERSION 3.20)
 project(barcoder)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -10,8 +10,6 @@ find_package(ZXing REQUIRED)
 
 add_executable(barcoder main.cpp)
 target_link_libraries(barcoder PRIVATE Catch2::Catch2WithMain libdmtx::libdmtx opencv::opencv ZXing::ZXing)
-
-#
 
 include(FetchContent)
 FetchContent_Declare(
