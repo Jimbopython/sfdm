@@ -11,23 +11,21 @@
 #include <tbb/parallel_reduce.h>
 #include <tbb/blocked_range.h>
 
-bool containsAll(const std::vector<std::string>& a, const std::vector<std::string>& b) {
-    return std::all_of(b.begin(), b.end(), [&](const auto& element) {
+bool containsAll(const std::vector<std::string> &a, const std::vector<std::string> &b) {
+    return std::all_of(b.begin(), b.end(), [&](const auto &element) {
         return std::find(a.begin(), a.end(), element) != a.end();
     });
 }
 
-std::map<std::string, std::vector<std::string>> readDataMatrixFile(const std::string& filename)
-{
-    std::map<std::string, std::vector<std::string>> result;
+std::map<std::string, std::vector<std::string> > readDataMatrixFile(const std::string &filename) {
+    std::map<std::string, std::vector<std::string> > result;
     std::ifstream file(filename);
 
     if (!file.is_open())
         return result;
 
     std::string line;
-    while (std::getline(file, line))
-    {
+    while (std::getline(file, line)) {
         if (line.empty())
             continue;
 
@@ -41,8 +39,7 @@ std::map<std::string, std::vector<std::string>> readDataMatrixFile(const std::st
         std::stringstream ss(values);
         std::string token;
 
-        while (std::getline(ss, token, '|'))
-        {
+        while (std::getline(ss, token, '|')) {
             if (!token.empty())
                 result[key].emplace_back(token);
         }
@@ -51,23 +48,21 @@ std::map<std::string, std::vector<std::string>> readDataMatrixFile(const std::st
     return result;
 }
 
-std::vector<cv::Rect> findDataMatrixROIs_MSER(const cv::Mat& input)
-{
+std::vector<cv::Rect> findDataMatrixROIs_MSER(const cv::Mat &input) {
     std::vector<cv::Rect> rois;
 
     cv::Ptr<cv::MSER> mser = cv::MSER::create(
-        5,      // delta
-        100,    // min area
-        20000   // max area
+        5, // delta
+        100, // min area
+        20000 // max area
     );
 
-    std::vector<std::vector<cv::Point>> regions;
+    std::vector<std::vector<cv::Point> > regions;
     std::vector<cv::Rect> boxes;
 
     mser->detectRegions(input, regions, boxes);
 
-    for (const cv::Rect& r : boxes)
-    {
+    for (const cv::Rect &r: boxes) {
         if (r.width < 16 || r.height < 16)
             continue;
 
@@ -81,29 +76,22 @@ std::vector<cv::Rect> findDataMatrixROIs_MSER(const cv::Mat& input)
     return rois;
 }
 
-void mergeROIs(std::vector<cv::Rect>& rois)
-{
-    for (size_t i = 0; i < rois.size(); ++i)
-    {
-        for (size_t j = i + 1; j < rois.size(); )
-        {
+void mergeROIs(std::vector<cv::Rect> &rois) {
+    for (size_t i = 0; i < rois.size(); ++i) {
+        for (size_t j = i + 1; j < rois.size();) {
             cv::Rect intersection = rois[i] & rois[j];
 
-            if (intersection.area() > 0)
-            {
+            if (intersection.area() > 0) {
                 rois[i] = rois[i] | rois[j];
                 rois.erase(rois.begin() + j);
-            }
-            else
-            {
+            } else {
                 ++j;
             }
         }
     }
 }
 
-std::vector<cv::Rect> findDataMatrixROIs_Canny(const cv::Mat& input)
-{
+std::vector<cv::Rect> findDataMatrixROIs_Canny(const cv::Mat &input) {
     std::vector<cv::Rect> rois;
     cv::Mat blurImg, edges, morph;
 
@@ -115,15 +103,14 @@ std::vector<cv::Rect> findDataMatrixROIs_Canny(const cv::Mat& input)
     );
     cv::morphologyEx(edges, morph, cv::MORPH_CLOSE, kernel);
 
-    std::vector<std::vector<cv::Point>> contours;
+    std::vector<std::vector<cv::Point> > contours;
     cv::findContours(
         morph, contours,
         cv::RETR_EXTERNAL,
         cv::CHAIN_APPROX_SIMPLE
     );
 
-    for (const std::vector<cv::Point>& c : contours)
-    {
+    for (const std::vector<cv::Point> &c: contours) {
         double area = cv::contourArea(c);
         if (area < 200)
             continue;
@@ -140,8 +127,7 @@ std::vector<cv::Rect> findDataMatrixROIs_Canny(const cv::Mat& input)
     return rois;
 }
 
-int dmtx(const cv::Mat& cvImage, const std::vector<std::string>& data)
-{
+int dmtx(const cv::Mat &cvImage, const std::vector<std::string> &data) {
     std::vector<cv::Rect> rois;
 
     auto mserROIs = findDataMatrixROIs_MSER(cvImage);
@@ -155,36 +141,35 @@ int dmtx(const cv::Mat& cvImage, const std::vector<std::string>& data)
     int count = tbb::parallel_reduce(
         tbb::blocked_range<size_t>(0, rois.size()),
         0,
-        [&](const tbb::blocked_range<size_t>& range, int localCount) -> int
-        {
+        [&](const tbb::blocked_range<size_t> &range, int localCount) -> int {
             for (size_t i = range.begin(); i != range.end(); ++i) {
-                const cv::Rect& r = rois[i];
+                const cv::Rect &r = rois[i];
 
                 cv::Mat roi = cvImage(r).clone();
                 if (roi.cols < 120) {
                     cv::resize(roi, roi, cv::Size(), 2.0, 2.0, cv::INTER_CUBIC);
                 }
 
-                DmtxImage* image = dmtxImageCreate(
+                DmtxImage *image = dmtxImageCreate(
                     roi.data, roi.cols, roi.rows, DmtxPack8bppK);
                 if (!image) continue;
 
-                DmtxDecode* decoder = dmtxDecodeCreate(image, 1);
+                DmtxDecode *decoder = dmtxDecodeCreate(image, 1);
                 if (!decoder) {
                     dmtxImageDestroy(&image);
                     continue;
                 }
 
                 DmtxTime timeout = dmtxTimeAdd(dmtxTimeNow(), 100);
-                DmtxRegion* region = dmtxRegionFindNext(decoder, &timeout);
+                DmtxRegion *region = dmtxRegionFindNext(decoder, &timeout);
                 if (!region) {
                     dmtxDecodeDestroy(&decoder);
                     dmtxImageDestroy(&image);
                     continue;
                 }
 
-                DmtxMessage* message =
-                    dmtxDecodeMatrixRegion(decoder, region, DmtxUndefined);
+                DmtxMessage *message =
+                        dmtxDecodeMatrixRegion(decoder, region, DmtxUndefined);
                 if (!message) {
                     dmtxDecodeDestroy(&decoder);
                     dmtxImageDestroy(&image);
@@ -193,9 +178,8 @@ int dmtx(const cv::Mat& cvImage, const std::vector<std::string>& data)
 
                 if (std::ranges::find(
                         data,
-                        reinterpret_cast<const char*>(message->output)
-                    ) != data.end())
-                {
+                        reinterpret_cast<const char *>(message->output)
+                    ) != data.end()) {
                     ++localCount;
                 }
 
@@ -213,7 +197,7 @@ int dmtx(const cv::Mat& cvImage, const std::vector<std::string>& data)
     return count;
 }
 
-int zxing(const cv::Mat& cvImage, const std::vector<std::string>& data) {
+int zxing(const cv::Mat &cvImage, const std::vector<std::string> &data) {
     ZXing::ImageView source{cvImage.data, cvImage.cols, cvImage.rows, ZXing::ImageFormat::Lum};
 
     ZXing::ReaderOptions options;
@@ -222,9 +206,9 @@ int zxing(const cv::Mat& cvImage, const std::vector<std::string>& data) {
     const auto results = ZXing::ReadBarcodes(source, options);
 
     std::vector<std::string> tmpData;
-    for (const auto& result : results) {
+    for (const auto &result: results) {
         auto it = std::ranges::find(data, result.text());
-        if(it != data.end()) {
+        if (it != data.end()) {
             tmpData.emplace_back(*it);
         }
     }
@@ -243,12 +227,12 @@ cv::Mat get_image(const std::filesystem::directory_entry &entry) {
     return gray;
 }
 
-template <typename Callable>
-void test(const Callable& callable) {
+template<typename Callable>
+void test(const Callable &callable) {
     const auto data = readDataMatrixFile("_deps/images-src/annotations.txt");
 
     SECTION("Single") {
-        for (const auto& entry : std::filesystem::directory_iterator("_deps/images-src")) {
+        for (const auto &entry: std::filesystem::directory_iterator("_deps/images-src")) {
             if (entry.is_regular_file() && entry.path().extension() == ".jpg") {
                 cv::Mat image = get_image(entry);
 
@@ -268,7 +252,7 @@ void test(const Callable& callable) {
     SECTION("Overall") {
         int foundTotal = 0;
         int totalCodes = 0;
-        for (const auto& entry : std::filesystem::directory_iterator("_deps/images-src")) {
+        for (const auto &entry: std::filesystem::directory_iterator("_deps/images-src")) {
             if (entry.is_regular_file() && entry.path().extension() == ".jpg") {
                 cv::Mat image = get_image(entry);
 
@@ -287,10 +271,10 @@ void test(const Callable& callable) {
     }
 }
 
-TEST_CASE( "LibDMTX" ) {
+TEST_CASE("LibDMTX") {
     test(dmtx);
 }
 
-TEST_CASE( "ZXing" ) {
+TEST_CASE("ZXing") {
     test(zxing);
 }

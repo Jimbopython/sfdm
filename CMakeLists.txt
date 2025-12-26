@@ -1,21 +1,37 @@
 cmake_minimum_required(VERSION 3.20)
-project(barcoder)
+project(barcoder C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 
-find_package(Catch2 REQUIRED)
-find_package(libdmtx REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(ZXing REQUIRED)
-find_package(TBB REQUIRED)
 
-add_executable(barcoder main.cpp)
-target_link_libraries(barcoder PRIVATE Catch2::Catch2WithMain libdmtx::libdmtx opencv::opencv ZXing::ZXing onetbb::onetbb)
+add_library(sfdm)
 
-include(FetchContent)
-FetchContent_Declare(
-        images
-        URL https://mdpi-res.com/d_attachment/jimaging/jimaging-07-00163/article_deploy/jimaging-07-00163-s001.zip?version=1630062264
+# Add sources
+target_sources(sfdm
+    PRIVATE
+        src/zxing_code_reader.cpp
+    PUBLIC
+        FILE_SET headers
+        TYPE HEADERS
+        BASE_DIRS include
+        FILES
+        include/sfdm/decode_result.hpp
+        include/sfdm/icode_reader.hpp
+        include/sfdm/zxing_code_reader.hpp
 )
 
-FetchContent_MakeAvailable(images)
+target_include_directories(sfdm
+        PUBLIC
+        include
+)
+
+target_compile_features(sfdm PUBLIC cxx_std_20)
+target_link_libraries(sfdm
+        PRIVATE
+            ZXing::ZXing
+        PUBLIC
+            opencv::opencv)
+
+add_subdirectory(test)
