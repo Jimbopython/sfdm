@@ -1,4 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators_range.hpp>
 #include <filesystem>
 #include <opencv2/opencv.hpp>
 #include <fstream>
@@ -8,6 +9,7 @@
 #include <ranges>
 #include <sfdm/zxing_code_reader.hpp>
 #include <sfdm/libdmtx_code_reader.hpp>
+#include <sfdm/libdmtx_fast_code_reader.hpp>
 
 int extraElementsCount(const std::vector<std::string> &a,
                        const std::vector<std::string> &requirement) {
@@ -50,8 +52,10 @@ std::map<std::string, std::vector<std::string> > readDataMatrixFile(const std::s
         std::string token;
 
         while (std::getline(ss, token, '|')) {
-            if (!token.empty())
+            if (!token.empty()) {
+                std::erase(token, '"');
                 result[key].emplace_back(token);
+            }
         }
     }
 
@@ -123,18 +127,26 @@ auto testReader(const auto &reader, const cv::Mat &image) {
     foundTexts.reserve(foundData.size());
     std::ranges::transform(foundData.begin(), foundData.end(), std::back_inserter(foundTexts),
                            [](const auto &result) {
-                               return result.text;
+                               auto text = result.text;
+                               // some codes actually contain newlines, but annotations dont
+                               std::erase(text, '\r');
+                               std::replace(text.begin(), text.end(), '\n', ' ');
+                               return text;
                            });
     return foundTexts;
 }
 
 TEST_CASE("LibDMTX") {
-    test(
-        [](const cv::Mat &image) {
-            const sfdm::LibdmtxCodeReader reader;
-            return testReader(reader, image);
-        }
-    );
+    const auto timeout = GENERATE_REF(from_range(std::vector{100, 200, 0}));
+    SECTION(std::to_string(timeout) + "ms timeout") {
+        test(
+            [&](const cv::Mat &image) {
+                sfdm::LibdmtxCodeReader reader;
+                reader.setTimeout(timeout);
+                return testReader(reader, image);
+            }
+        );
+    }
 }
 
 TEST_CASE("ZXing") {
@@ -144,4 +156,17 @@ TEST_CASE("ZXing") {
             return testReader(reader, image);
         }
     );
+}
+
+TEST_CASE("Fast LibDMTX") {
+    const auto timeout = GENERATE_REF(from_range(std::vector{100, 200, 0}));
+    SECTION(std::to_string(timeout) + "ms timeout") {
+        test(
+            [&](const cv::Mat &image) {
+                sfdm::LibdmtxFastCodeReader reader;
+                reader.setTimeout(timeout);
+                return testReader(reader, image);
+            }
+        );
+    }
 }

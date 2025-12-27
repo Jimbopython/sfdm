@@ -16,7 +16,9 @@ namespace sfdm {
         std::vector<DecodeResult> results;
 
         for (int i = 0; i < 255; ++i) {
-            DmtxRegion *region = dmtxRegionFindNext(decoder, nullptr);
+            DmtxTime timeout = dmtxTimeNow();
+            timeout = dmtxTimeAdd(timeout, m_timeoutMSec);
+            DmtxRegion *region = dmtxRegionFindNext(decoder, m_timeoutMSec ? &timeout : nullptr);
             if (!region) {
                 break;
             }
@@ -35,5 +37,13 @@ namespace sfdm {
         dmtxImageDestroy(&dmtxImage);
 
         return results;
+    }
+
+    void LibdmtxCodeReader::setTimeout(uint32_t msec) {
+        m_timeoutMSec = msec;
+    }
+
+    bool LibdmtxCodeReader::isTimeoutSupported() {
+        return true;
     }
 }

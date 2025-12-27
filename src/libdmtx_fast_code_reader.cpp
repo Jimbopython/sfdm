@@ -120,9 +120,9 @@ namespace sfdm {
                         break;
                     }
 
-                    std::vector<DecodeResult> results;
-
-                    DmtxRegion *region = dmtxRegionFindNext(decoder, nullptr);
+                    DmtxTime timeout = dmtxTimeNow();
+                    timeout = dmtxTimeAdd(timeout, m_timeoutMSec);
+                    DmtxRegion *region = dmtxRegionFindNext(decoder, m_timeoutMSec ? &timeout : nullptr);
                     if (!region) {
                         continue;
                     }
@@ -134,7 +134,7 @@ namespace sfdm {
                     if (!message) {
                         continue;
                     }
-                    results.emplace_back(DecodeResult{reinterpret_cast<const char *>(message->output)});
+                    tmpData.push_back({reinterpret_cast<const char *>(message->output)});
                     dmtxMessageDestroy(&message);
 
 
@@ -143,5 +143,13 @@ namespace sfdm {
                 }
             });
         return {tmpData.begin(), tmpData.end()};
+    }
+
+    void LibdmtxFastCodeReader::setTimeout(uint32_t msec) {
+        m_timeoutMSec = msec;
+    }
+
+    bool LibdmtxFastCodeReader::isTimeoutSupported() {
+        return true;
     }
 }

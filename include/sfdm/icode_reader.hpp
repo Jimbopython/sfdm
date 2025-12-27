@@ -9,5 +9,9 @@ namespace sfdm {
 
         //virtual std::vector<DetectionResult> detect(const cv::Mat& image) = 0;
         [[nodiscard]] virtual std::vector<DecodeResult> decode(const cv::Mat &image) const = 0;
+
+        virtual void setTimeout(uint32_t msec) = 0;
+
+        virtual bool isTimeoutSupported() = 0;
     };
 }

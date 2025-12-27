@@ -15,6 +15,10 @@ namespace sfdm {
 
         [[nodiscard]] std::vector<DecodeResult> decode(const cv::Mat &image) const override;
 
+        void setTimeout(uint32_t msec) override;
+
+        bool isTimeoutSupported() override;
+
     private:
         std::unique_ptr<ZXingCodeReaderImpl> m_impl;
     };
