@@ -11,6 +11,7 @@ namespace sfdm {
         [[nodiscard]] virtual std::vector<DecodeResult> decode(const cv::Mat &image) const = 0;
 
         virtual void setTimeout(uint32_t msec) = 0;
+ virtual void setMaximumNumberOfCodesToDetect(uint32_t count) = 0;
 
         virtual bool isTimeoutSupported() = 0;
     };

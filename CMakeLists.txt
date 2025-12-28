@@ -14,7 +14,6 @@ target_sources(sfdm
     PRIVATE
         src/zxing_code_reader.cpp
         src/libdmtx_code_reader.cpp
-        src/libdmtx_fast_code_reader.cpp
     PUBLIC
         FILE_SET headers
         TYPE HEADERS
@@ -23,7 +22,6 @@ target_sources(sfdm
         include/sfdm/decode_result.hpp
         include/sfdm/icode_reader.hpp
         include/sfdm/libdmtx_code_reader.hpp
-        include/sfdm/libdmtx_fast_code_reader.hpp
         include/sfdm/zxing_code_reader.hpp
 )
 

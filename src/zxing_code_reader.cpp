@@ -34,4 +34,8 @@ namespace sfdm {
     bool ZXingCodeReader::isTimeoutSupported() {
         return false;
     }
+
+    void ZXingCodeReader::setMaximumNumberOfCodesToDetect(uint32_t count) {
+        m_impl->options.setMaxNumberOfSymbols(count);
+    }
 }

@@ -6,11 +6,10 @@
 #include <ranges>
 #include <sfdm/zxing_code_reader.hpp>
 #include <sfdm/libdmtx_code_reader.hpp>
-#include <sfdm/libdmtx_fast_code_reader.hpp>
 #include "test_utils.hpp"
 
 template<typename Callable>
-void test(const Callable &callable) {
+void testDecoding(const Callable &callable) {
     const auto data = readDataMatrixFile("../_deps/images-src/annotations.txt");
 
     SECTION("Single") {
@@ -71,10 +70,10 @@ auto testReader(const auto &reader, const cv::Mat &image) {
     return foundTexts;
 }
 
-TEST_CASE("LibDMTX") {
+TEST_CASE("LibDMTX Decoding") {
     const auto timeout = GENERATE_REF(from_range(std::vector{100, 200, 0}));
     SECTION(std::to_string(timeout) + "ms timeout") {
-        test(
+        testDecoding(
             [&](const cv::Mat &image) {
                 sfdm::LibdmtxCodeReader reader;
                 reader.setTimeout(timeout);
@@ -84,24 +83,11 @@ TEST_CASE("LibDMTX") {
     }
 }
 
-TEST_CASE("ZXing") {
-    test(
+TEST_CASE("ZXing Decoding") {
+    testDecoding(
         [](const cv::Mat &image) {
             const sfdm::ZXingCodeReader reader;
             return testReader(reader, image);
         }
     );
-}
-
-TEST_CASE("LibDMTX Fast") {
-    const auto timeout = GENERATE_REF(from_range(std::vector{100, 200, 0}));
-    SECTION(std::to_string(timeout) + "ms timeout") {
-        test(
-            [&](const cv::Mat &image) {
-                sfdm::LibdmtxFastCodeReader reader;
-                reader.setTimeout(timeout);
-                return testReader(reader, image);
-            }
-        );
-    }
 }

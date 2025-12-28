@@ -19,6 +19,8 @@ namespace sfdm {
 
         bool isTimeoutSupported() override;
 
+        void setMaximumNumberOfCodesToDetect(uint32_t count) override;
+
     private:
         std::unique_ptr<ZXingCodeReaderImpl> m_impl;
     };

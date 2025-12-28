@@ -36,18 +36,23 @@ namespace {
 }
 
 namespace sfdm {
-    std::shared_ptr<DmtxRegion> LibdmtxCodeReader::detectNext(
+    std::pair<std::shared_ptr<DmtxRegion>, LibdmtxCodeReader::StopCause> LibdmtxCodeReader::detectNext(
         const std::shared_ptr<DmtxDecode> &decoder) const {
+        DmtxScanConstraint constraint{};
+
         DmtxTime timeout = dmtxTimeNow();
         timeout = dmtxTimeAdd(timeout, m_timeoutMSec);
-        return {
-            dmtxRegionFindNext(decoder.get(), m_timeoutMSec ? &timeout : nullptr),
+        constraint.maxTimeout = &timeout;
+
+        std::shared_ptr<DmtxRegion> region{
+            dmtxRegionFindNextDeterministic(decoder.get(), m_timeoutMSec ? &constraint : nullptr),
             [](DmtxRegion *region) {
                 if (region) {
                     dmtxRegionDestroy(&region);
                 }
             }
         };
+        return {region, static_cast<LibdmtxCodeReader::StopCause>(constraint.stopCause)};
     }
 
     [[nodiscard]] std::shared_ptr<DmtxMessage_struct>
@@ -67,10 +72,11 @@ namespace sfdm {
         DecodeGuard decodeGuard(image);
 
         std::vector<DecodeResult> results;
+        results.reserve(m_maximumNumberOfCodesToDetect);
 
-        for (int i = 0; i < 255; ++i) {
-            const auto region = detectNext(decodeGuard.getDecoder());
-            if (!region) {
+        while (results.size() < m_maximumNumberOfCodesToDetect) {
+            const auto [region, stopCause] = detectNext(decodeGuard.getDecoder());
+            if (!region || stopCause == StopCause::ScanTimeLimit) {
                 break;
             }
 
@@ -82,6 +88,8 @@ namespace sfdm {
             results.emplace_back(DecodeResult{reinterpret_cast<const char *>(message->output)});
         }
 
+        results.shrink_to_fit();
+
         return results;
     }
 
@@ -91,5 +99,9 @@ namespace sfdm {
 
     bool LibdmtxCodeReader::isTimeoutSupported() {
         return true;
+    }
+
+    void LibdmtxCodeReader::setMaximumNumberOfCodesToDetect(uint32_t count) {
+        m_maximumNumberOfCodesToDetect = count;
     }
 }
