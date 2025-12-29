@@ -1,21 +1,21 @@
-#include <sfdm/libdmtx_code_reader.hpp>
 #include <dmtx.h>
+#include <sfdm/libdmtx_code_reader.hpp>
 
 namespace {
     class DecodeGuard {
     public:
-        explicit DecodeGuard(const cv::Mat &image) : m_image(dmtxImageCreate(
-                                                                 image.data, image.cols, image.rows, DmtxPack8bppK),
-                                                             [](DmtxImage *dmtxImage) {
-                                                                 if (dmtxImage) {
-                                                                     dmtxImageDestroy(&dmtxImage);
-                                                                 }
-                                                             }), m_decoder(dmtxDecodeCreate(m_image.get(), 1),
-                                                                           [](DmtxDecode *decoder) {
-                                                                               if (decoder) {
-                                                                                   dmtxDecodeDestroy(&decoder);
-                                                                               }
-                                                                           }) {
+        explicit DecodeGuard(const cv::Mat &image) :
+            m_image(dmtxImageCreate(image.data, image.cols, image.rows, DmtxPack8bppK),
+                    [](DmtxImage *dmtxImage) {
+                        if (dmtxImage) {
+                            dmtxImageDestroy(&dmtxImage);
+                        }
+                    }),
+            m_decoder(dmtxDecodeCreate(m_image.get(), 1), [](DmtxDecode *decoder) {
+                if (decoder) {
+                    dmtxDecodeDestroy(&decoder);
+                }
+            }) {
             if (!m_image) {
                 throw std::runtime_error("Could not create image!");
             }
@@ -25,19 +25,17 @@ namespace {
             }
         }
 
-        std::shared_ptr<DmtxDecode> getDecoder() {
-            return m_decoder;
-        }
+        std::shared_ptr<DmtxDecode> getDecoder() { return m_decoder; }
 
     private:
         std::shared_ptr<DmtxImage> m_image;
         std::shared_ptr<DmtxDecode> m_decoder;
     };
-}
+} // namespace
 
 namespace sfdm {
-    std::pair<std::shared_ptr<DmtxRegion>, LibdmtxCodeReader::StopCause> LibdmtxCodeReader::detectNext(
-        const std::shared_ptr<DmtxDecode> &decoder) const {
+    std::pair<std::shared_ptr<DmtxRegion>, LibdmtxCodeReader::StopCause>
+    LibdmtxCodeReader::detectNext(const std::shared_ptr<DmtxDecode> &decoder) const {
         DmtxScanConstraint constraint{};
 
         DmtxTime timeout = dmtxTimeNow();
@@ -45,27 +43,23 @@ namespace sfdm {
         constraint.maxTimeout = &timeout;
 
         std::shared_ptr<DmtxRegion> region{
-            dmtxRegionFindNextDeterministic(decoder.get(), m_timeoutMSec ? &constraint : nullptr),
-            [](DmtxRegion *region) {
-                if (region) {
-                    dmtxRegionDestroy(&region);
-                }
-            }
-        };
+                dmtxRegionFindNextDeterministic(decoder.get(), m_timeoutMSec ? &constraint : nullptr),
+                [](DmtxRegion *region) {
+                    if (region) {
+                        dmtxRegionDestroy(&region);
+                    }
+                }};
         return {region, static_cast<LibdmtxCodeReader::StopCause>(constraint.stopCause)};
     }
 
     [[nodiscard]] std::shared_ptr<DmtxMessage_struct>
     LibdmtxCodeReader::decode(const std::shared_ptr<DmtxDecode_struct> &decoder,
                               const std::shared_ptr<DmtxRegion_struct> &region) const {
-        return {
-            dmtxDecodeMatrixRegion(decoder.get(), region.get(), DmtxTrue),
-            [](auto *message) {
-                if (message) {
-                    dmtxMessageDestroy(&message);
-                }
-            }
-        };
+        return {dmtxDecodeMatrixRegion(decoder.get(), region.get(), DmtxTrue), [](auto *message) {
+                    if (message) {
+                        dmtxMessageDestroy(&message);
+                    }
+                }};
     }
 
     std::vector<DecodeResult> LibdmtxCodeReader::decode(const cv::Mat &image) const {
@@ -94,15 +88,9 @@ namespace sfdm {
         return results;
     }
 
-    void LibdmtxCodeReader::setTimeout(uint32_t msec) {
-        m_timeoutMSec = msec;
-    }
+    void LibdmtxCodeReader::setTimeout(uint32_t msec) { m_timeoutMSec = msec; }
 
-    bool LibdmtxCodeReader::isTimeoutSupported() {
-        return true;
-    }
+    bool LibdmtxCodeReader::isTimeoutSupported() { return true; }
 
-    void LibdmtxCodeReader::setMaximumNumberOfCodesToDetect(uint32_t count) {
-        m_maximumNumberOfCodesToDetect = count;
-    }
-}
+    void LibdmtxCodeReader::setMaximumNumberOfCodesToDetect(uint32_t count) { m_maximumNumberOfCodesToDetect = count; }
+} // namespace sfdm

@@ -37,4 +37,4 @@ namespace sfdm {
         uint32_t m_timeoutMSec{};
         uint32_t m_maximumNumberOfCodesToDetect{255};
     };
-}
+} // namespace sfdm

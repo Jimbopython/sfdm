@@ -1,5 +1,5 @@
-#include <sfdm/zxing_code_reader.hpp>
 #include <ZXing/ReadBarcode.h>
+#include <sfdm/zxing_code_reader.hpp>
 
 namespace sfdm {
     struct ZXingCodeReaderImpl {
@@ -21,21 +21,15 @@ namespace sfdm {
 
         std::vector<DecodeResult> decodeResults;
         std::ranges::transform(results, std::back_inserter(decodeResults),
-                               [&](const auto &result) {
-                                   return DecodeResult{result.text()};
-                               });
+                               [&](const auto &result) { return DecodeResult{result.text()}; });
         return decodeResults;
     }
 
-    void ZXingCodeReader::setTimeout(uint32_t msec) {
-        throw std::runtime_error{"setTimeout is not supported!"};
-    }
+    void ZXingCodeReader::setTimeout(uint32_t msec) { throw std::runtime_error{"setTimeout is not supported!"}; }
 
-    bool ZXingCodeReader::isTimeoutSupported() {
-        return false;
-    }
+    bool ZXingCodeReader::isTimeoutSupported() { return false; }
 
     void ZXingCodeReader::setMaximumNumberOfCodesToDetect(uint32_t count) {
         m_impl->options.setMaxNumberOfSymbols(count);
     }
-}
+} // namespace sfdm

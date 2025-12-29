@@ -5,4 +5,4 @@ namespace sfdm {
     struct DecodeResult {
         const std::string text;
     };
-}
+} // namespace sfdm

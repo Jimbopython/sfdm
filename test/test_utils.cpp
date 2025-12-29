@@ -3,15 +3,14 @@
 #include "test_utils.hpp"
 
 #include <fstream>
-#include <string>
-#include <sstream>
 #include <map>
-#include <vector>
-#include <unordered_map>
 #include <ranges>
+#include <sstream>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
-int extraElementsCount(const std::vector<std::string> &a,
-                       const std::vector<std::string> &requirement) {
+int extraElementsCount(const std::vector<std::string> &a, const std::vector<std::string> &requirement) {
     std::unordered_map<std::string, int> freq;
 
     for (const auto &x: a)
@@ -28,8 +27,8 @@ int extraElementsCount(const std::vector<std::string> &a,
     return extras;
 }
 
-std::map<std::string, std::vector<std::string> > readDataMatrixFile(const std::string &filename) {
-    std::map<std::string, std::vector<std::string> > result;
+std::map<std::string, std::vector<std::string>> readDataMatrixFile(const std::string &filename) {
+    std::map<std::string, std::vector<std::string>> result;
     std::ifstream file(filename);
 
     if (!file.is_open())

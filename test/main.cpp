@@ -2,10 +2,10 @@
 #include <catch2/generators/catch_generators_range.hpp>
 #include <filesystem>
 #include <opencv2/opencv.hpp>
-#include <string>
 #include <ranges>
-#include <sfdm/zxing_code_reader.hpp>
 #include <sfdm/libdmtx_code_reader.hpp>
+#include <sfdm/zxing_code_reader.hpp>
+#include <string>
 #include "test_utils.hpp"
 
 template<typename Callable>
@@ -59,35 +59,30 @@ auto testReader(const auto &reader, const cv::Mat &image) {
     const auto foundData = reader.decode(image);
     std::vector<std::string> foundTexts;
     foundTexts.reserve(foundData.size());
-    std::ranges::transform(foundData.begin(), foundData.end(), std::back_inserter(foundTexts),
-                           [](const auto &result) {
-                               auto text = result.text;
-                               // some codes actually contain newlines, but annotations dont
-                               std::erase(text, '\r');
-                               std::replace(text.begin(), text.end(), '\n', ' ');
-                               return text;
-                           });
+    std::ranges::transform(foundData.begin(), foundData.end(), std::back_inserter(foundTexts), [](const auto &result) {
+        auto text = result.text;
+        // some codes actually contain newlines, but annotations dont
+        std::erase(text, '\r');
+        std::replace(text.begin(), text.end(), '\n', ' ');
+        return text;
+    });
     return foundTexts;
 }
 
 TEST_CASE("LibDMTX Decoding") {
     const auto timeout = GENERATE_REF(from_range(std::vector{100, 200, 0}));
     SECTION(std::to_string(timeout) + "ms timeout") {
-        testDecoding(
-            [&](const cv::Mat &image) {
-                sfdm::LibdmtxCodeReader reader;
-                reader.setTimeout(timeout);
-                return testReader(reader, image);
-            }
-        );
+        testDecoding([&](const cv::Mat &image) {
+            sfdm::LibdmtxCodeReader reader;
+            reader.setTimeout(timeout);
+            return testReader(reader, image);
+        });
     }
 }
 
 TEST_CASE("ZXing Decoding") {
-    testDecoding(
-        [](const cv::Mat &image) {
-            const sfdm::ZXingCodeReader reader;
-            return testReader(reader, image);
-        }
-    );
+    testDecoding([](const cv::Mat &image) {
+        const sfdm::ZXingCodeReader reader;
+        return testReader(reader, image);
+    });
 }
