@@ -3,7 +3,6 @@ libdmtx/0.7.8
 catch2/3.11.0
 zxing-cpp/2.3.0
 opencv/4.9.0
-onetbb/2022.3.0
 
 [generators]
 CMakeDeps
@@ -43,7 +42,7 @@ opencv/*:video=False
 opencv/*:videoio=False
 opencv/*:objdetect=False
 opencv/*:calib3d=False
-opencv/*:features2d=True
+opencv/*:features2d=False
 opencv/*:flann=False
 opencv/*:highgui=False
 opencv/*:imgcodecs=True

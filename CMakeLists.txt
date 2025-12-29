@@ -52,3 +52,5 @@ target_link_libraries(sfdm
 if (sfdm_BUILD_TESTS)
     add_subdirectory(test)
 endif ()
+
+install(TARGETS sfdm FILE_SET headers)
