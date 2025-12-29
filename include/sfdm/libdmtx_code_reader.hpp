@@ -19,6 +19,9 @@ namespace sfdm {
 
         void setMaximumNumberOfCodesToDetect(uint32_t count) override;
 
+        void setDecodingFinishedCallback(std::function<void(DecodeResult)> callback) override;
+        bool isDecodingFinishedCallbackSupported() override;
+
     private:
         enum class StopCause {
             ScanNotFound,
@@ -36,5 +39,6 @@ namespace sfdm {
 
         uint32_t m_timeoutMSec{};
         uint32_t m_maximumNumberOfCodesToDetect{255};
+        std::function<void(DecodeResult)> m_decodingFinishedCallback{};
     };
 } // namespace sfdm

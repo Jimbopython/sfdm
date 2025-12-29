@@ -21,6 +21,10 @@ namespace sfdm {
 
         void setMaximumNumberOfCodesToDetect(uint32_t count) override;
 
+        void setDecodingFinishedCallback(std::function<void(DecodeResult)> callback) override;
+
+        bool isDecodingFinishedCallbackSupported() override;
+
     private:
         std::unique_ptr<ZXingCodeReaderImpl> m_impl;
     };

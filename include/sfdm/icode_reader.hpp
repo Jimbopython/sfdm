@@ -12,8 +12,12 @@ namespace sfdm {
 
         virtual void setTimeout(uint32_t msec) = 0;
 
+        virtual bool isTimeoutSupported() = 0;
+
         virtual void setMaximumNumberOfCodesToDetect(uint32_t count) = 0;
 
-        virtual bool isTimeoutSupported() = 0;
+        virtual void setDecodingFinishedCallback(std::function<void(DecodeResult)> callback) = 0;
+
+        virtual bool isDecodingFinishedCallbackSupported() = 0;
     };
 } // namespace sfdm

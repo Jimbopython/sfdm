@@ -32,4 +32,8 @@ namespace sfdm {
     void ZXingCodeReader::setMaximumNumberOfCodesToDetect(uint32_t count) {
         m_impl->options.setMaxNumberOfSymbols(count);
     }
+    void ZXingCodeReader::setDecodingFinishedCallback(std::function<void(DecodeResult)> callback) {
+        throw std::runtime_error{"setDecodingFinishedCallback is not supported!"};
+    }
+    bool ZXingCodeReader::isDecodingFinishedCallbackSupported() { return false; }
 } // namespace sfdm

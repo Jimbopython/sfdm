@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators_range.hpp>
 #include <filesystem>
+#include <iostream>
+#include <mutex>
 #include <opencv2/opencv.hpp>
 #include <ranges>
 #include <sfdm/libdmtx_code_reader.hpp>
@@ -55,8 +57,20 @@ void testDecoding(const Callable &callable) {
     }
 }
 
-auto testReader(const auto &reader, const cv::Mat &image) {
+auto testReader(auto &reader, const cv::Mat &image) {
+    std::vector<sfdm::DecodeResult> callbackData;
+    std::mutex dataMutex;
+
+    if (reader.isDecodingFinishedCallbackSupported()) {
+        reader.setDecodingFinishedCallback([&](auto result) {
+            std::lock_guard lock(dataMutex);
+            callbackData.emplace_back(result);
+        });
+    }
     const auto foundData = reader.decode(image);
+    if (reader.isDecodingFinishedCallbackSupported()) {
+        REQUIRE(foundData == callbackData);
+    }
     std::vector<std::string> foundTexts;
     foundTexts.reserve(foundData.size());
     std::ranges::transform(foundData.begin(), foundData.end(), std::back_inserter(foundTexts), [](const auto &result) {
@@ -82,7 +96,7 @@ TEST_CASE("LibDMTX Decoding") {
 
 TEST_CASE("ZXing Decoding") {
     testDecoding([](const cv::Mat &image) {
-        const sfdm::ZXingCodeReader reader;
+        sfdm::ZXingCodeReader reader;
         return testReader(reader, image);
     });
 }
