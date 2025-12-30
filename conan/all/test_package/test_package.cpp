@@ -1,10 +1,8 @@
-#include <sfdm/libdmtx_code_reader.hpp>
-#include <sfdm/zxing_code_reader.hpp>
+#include <sfdm/decode_result.hpp>
 
 
 int main(void) {
-    sfdm::LibdmtxCodeReader dmtxCodeReader{};
-    sfdm::ZXingCodeReader zxingCodeReader{};
+    sfdm::DecodeResult{};
 
     return 0;
 }
