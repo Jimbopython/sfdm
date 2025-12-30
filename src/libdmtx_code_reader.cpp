@@ -83,7 +83,9 @@ namespace sfdm {
             }
 
             DecodeResult decodeResult{reinterpret_cast<const char *>(message->output)};
-            std::thread(m_decodingFinishedCallback, decodeResult).detach();
+            if (m_decodingFinishedCallback) {
+                std::thread(m_decodingFinishedCallback, decodeResult).detach();
+            }
             results.emplace_back(decodeResult);
         }
 
