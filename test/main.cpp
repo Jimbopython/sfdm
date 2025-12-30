@@ -10,6 +10,8 @@
 #include <string>
 #include "test_utils.hpp"
 
+// #define BUILD_FOR_PLOTS
+
 template<typename Callable>
 void testDecoding(const Callable &callable) {
     const auto data = readDataMatrixFile("../_deps/images-src/annotations.txt");
@@ -26,10 +28,20 @@ void testDecoding(const Callable &callable) {
                 }
                 const auto currentData = it->second;
                 SECTION(fileName) {
-                    const auto foundTexts = callable(image);
+                    auto foundTexts = callable(image);
                     const auto foundCount = foundTexts.size() - extraElementsCount(foundTexts, currentData);
-                    CAPTURE(foundTexts, currentData);
-                    REQUIRE(foundCount == currentData.size());
+#ifndef BUILD_FOR_PLOTS
+                    CHECK(foundCount == currentData.size());
+#endif
+                    for (const auto &text: currentData) {
+                        const auto itText = std::find(foundTexts.begin(), foundTexts.end(), text);
+                        bool requirementTextFound = itText != foundTexts.end();
+                        CAPTURE(text);
+                        CHECK(requirementTextFound);
+                        if (itText != foundTexts.end()) {
+                            foundTexts.erase(itText);
+                        }
+                    }
                 }
             }
         }
@@ -58,6 +70,7 @@ void testDecoding(const Callable &callable) {
 }
 
 auto testReader(auto &reader, const cv::Mat &image) {
+#ifndef BUILD_FOR_PLOTS
     std::vector<sfdm::DecodeResult> callbackData;
     std::mutex dataMutex;
 
@@ -67,11 +80,14 @@ auto testReader(auto &reader, const cv::Mat &image) {
             callbackData.emplace_back(result);
         });
     }
+#endif
     const auto foundData =
             reader.decode({static_cast<size_t>(image.cols), static_cast<size_t>(image.rows), image.data});
+#ifndef BUILD_FOR_PLOTS
     if (reader.isDecodingFinishedCallbackSupported()) {
         REQUIRE(foundData == callbackData);
     }
+#endif
     std::vector<std::string> foundTexts;
     foundTexts.reserve(foundData.size());
     std::ranges::transform(foundData.begin(), foundData.end(), std::back_inserter(foundTexts), [](const auto &result) {
