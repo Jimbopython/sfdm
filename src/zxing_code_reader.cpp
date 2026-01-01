@@ -21,8 +21,30 @@ namespace sfdm {
         const auto results = ZXing::ReadBarcodes(source, m_impl->options);
 
         std::vector<DecodeResult> decodeResults;
-        std::ranges::transform(results, std::back_inserter(decodeResults),
-                               [&](const auto &result) { return DecodeResult{result.text()}; });
+        std::ranges::transform(results, std::back_inserter(decodeResults), [&](const auto &result) {
+            const auto zXingPosition = result.position();
+            const auto topLeft = zXingPosition.topLeft();
+            const auto topRight = zXingPosition.topRight();
+            const auto bottomLeft = zXingPosition.bottomLeft();
+            const auto bottomRight = zXingPosition.bottomRight();
+            const CodePosition codePosition{{
+                                                    static_cast<uint32_t>(topLeft.x),
+                                                    static_cast<uint32_t>(topLeft.y),
+                                            },
+                                            {
+                                                    static_cast<uint32_t>(topRight.x),
+                                                    static_cast<uint32_t>(topRight.y),
+                                            },
+                                            {
+                                                    static_cast<uint32_t>(bottomLeft.x),
+                                                    static_cast<uint32_t>(bottomLeft.y),
+                                            },
+                                            {
+                                                    static_cast<uint32_t>(bottomRight.x),
+                                                    static_cast<uint32_t>(bottomRight.y),
+                                            }};
+            return DecodeResult{result.text(), codePosition};
+        });
         return decodeResults;
     }
 
@@ -33,6 +55,7 @@ namespace sfdm {
     void ZXingCodeReader::setMaximumNumberOfCodesToDetect(uint32_t count) {
         m_impl->options.setMaxNumberOfSymbols(count);
     }
+    uint32_t ZXingCodeReader::getMaximumNumberOfCodesToDetect() const { return m_impl->options.maxNumberOfSymbols(); }
     void ZXingCodeReader::setDecodingFinishedCallback(std::function<void(DecodeResult)> callback) {
         throw std::runtime_error{"setDecodingFinishedCallback is not supported!"};
     }

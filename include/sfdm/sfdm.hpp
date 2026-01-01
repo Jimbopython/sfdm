@@ -12,3 +12,7 @@
 #ifdef SFDM_WITH_LIBDMTX_DECODER
 #include <sfdm/libdmtx_code_reader.hpp>
 #endif
+
+#if defined(SFDM_WITH_ZXING_DECODER) && defined(SFDM_WITH_LIBDMTX_DECODER)
+#include <sfdm/libdmtx_zxing_combined_code_reader.hpp>
+#endif

@@ -1,19 +1,12 @@
 #pragma once
-#include <memory>
 #include <sfdm/icode_reader.hpp>
+#include <sfdm/libdmtx_code_reader.hpp>
+#include <sfdm/zxing_code_reader.hpp>
+#include <vector>
 
 namespace sfdm {
-    struct ZXingCodeReaderImpl;
-
-
-    class ZXingCodeReader : public ICodeReader {
+    class LibdmtxZXingCombinedCodeReader : public ICodeReader {
     public:
-        ZXingCodeReader();
-
-        ~ZXingCodeReader() override;
-
-        // DetectionResult detect(const cv::Mat &image) override;
-
         [[nodiscard]] std::vector<DecodeResult> decode(const ImageView &image) const override;
 
         void setTimeout(uint32_t msec) override;
@@ -21,14 +14,12 @@ namespace sfdm {
         bool isTimeoutSupported() override;
 
         void setMaximumNumberOfCodesToDetect(uint32_t count) override;
-
         uint32_t getMaximumNumberOfCodesToDetect() const override;
 
         void setDecodingFinishedCallback(std::function<void(DecodeResult)> callback) override;
-
         bool isDecodingFinishedCallbackSupported() override;
 
     private:
-        std::unique_ptr<ZXingCodeReaderImpl> m_impl;
+        ZXingCodeReader m_zxingCodeReader;
     };
 } // namespace sfdm

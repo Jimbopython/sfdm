@@ -18,6 +18,7 @@ namespace sfdm {
 
         virtual void setMaximumNumberOfCodesToDetect(uint32_t count) = 0;
 
+        virtual uint32_t getMaximumNumberOfCodesToDetect() const = 0;
         virtual void setDecodingFinishedCallback(std::function<void(DecodeResult)> callback) = 0;
 
         virtual bool isDecodingFinishedCallbackSupported() = 0;

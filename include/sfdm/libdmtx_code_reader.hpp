@@ -19,6 +19,7 @@ namespace sfdm {
         bool isTimeoutSupported() override;
 
         void setMaximumNumberOfCodesToDetect(uint32_t count) override;
+        uint32_t getMaximumNumberOfCodesToDetect() const override;
 
         void setDecodingFinishedCallback(std::function<void(DecodeResult)> callback) override;
         bool isDecodingFinishedCallbackSupported() override;

@@ -82,7 +82,7 @@ namespace sfdm {
                 break;
             }
 
-            DecodeResult decodeResult{reinterpret_cast<const char *>(message->output)};
+            DecodeResult decodeResult{reinterpret_cast<const char *>(message->output), {}};
             if (m_decodingFinishedCallback) {
                 std::thread(m_decodingFinishedCallback, decodeResult).detach();
             }
@@ -99,6 +99,9 @@ namespace sfdm {
     bool LibdmtxCodeReader::isTimeoutSupported() { return true; }
 
     void LibdmtxCodeReader::setMaximumNumberOfCodesToDetect(uint32_t count) { m_maximumNumberOfCodesToDetect = count; }
+
+    uint32_t LibdmtxCodeReader::getMaximumNumberOfCodesToDetect() const { return m_maximumNumberOfCodesToDetect; }
+
     void LibdmtxCodeReader::setDecodingFinishedCallback(std::function<void(DecodeResult)> callback) {
         m_decodingFinishedCallback = callback;
     }

@@ -27,6 +27,7 @@ target_sources(sfdm
     PRIVATE
         $<$<BOOL:${sfdm_WITH_ZXING_DECODER}>:src/zxing_code_reader.cpp>
         $<$<BOOL:${sfdm_WITH_LIBDMTX_DECODER}>:src/libdmtx_code_reader.cpp>
+        $<$<AND:$<BOOL:${sfdm_WITH_LIBDMTX_DECODER}>,$<BOOL:${sfdm_WITH_ZXING_DECODER}>>:src/libdmtx_zxing_combined_code_reader.cpp>
     PUBLIC
         FILE_SET headers
         TYPE HEADERS
@@ -37,10 +38,11 @@ target_sources(sfdm
         include/sfdm/decode_result.hpp
         include/sfdm/icode_reader.hpp
         include/sfdm/image_view.hpp
-        $<$<BOOL:${sfdm_WITH_LIBDMTX_DECODER}>:include/sfdm/libdmtx_code_reader.hpp>
         include/sfdm/sfdm.hpp
         ${CMAKE_CURRENT_BINARY_DIR}/include/sfdm/sfdm_config.hpp
+        $<$<BOOL:${sfdm_WITH_LIBDMTX_DECODER}>:include/sfdm/libdmtx_code_reader.hpp>
         $<$<BOOL:${sfdm_WITH_ZXING_DECODER}>:include/sfdm/zxing_code_reader.hpp>
+        $<$<AND:$<BOOL:${sfdm_WITH_LIBDMTX_DECODER}>,$<BOOL:${sfdm_WITH_ZXING_DECODER}>>:include/sfdm/libdmtx_zxing_combined_code_reader.hpp>
 )
 set_target_properties(sfdm PROPERTIES
         VERIFY_INTERFACE_HEADER_SETS ON

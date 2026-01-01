@@ -8,6 +8,7 @@
 #include <sfdm/libdmtx_code_reader.hpp>
 #include <sfdm/zxing_code_reader.hpp>
 #include <string>
+#include "sfdm/libdmtx_zxing_combined_code_reader.hpp"
 #include "test_utils.hpp"
 
 // #define BUILD_FOR_PLOTS
@@ -114,6 +115,13 @@ TEST_CASE("LibDMTX Decoding") {
 TEST_CASE("ZXing Decoding") {
     testDecoding([](const cv::Mat &image) {
         sfdm::ZXingCodeReader reader;
+        return testReader(reader, image);
+    });
+}
+
+TEST_CASE("Combined Decoding") {
+    testDecoding([](const cv::Mat &image) {
+        sfdm::LibdmtxZXingCombinedCodeReader reader;
         return testReader(reader, image);
     });
 }
