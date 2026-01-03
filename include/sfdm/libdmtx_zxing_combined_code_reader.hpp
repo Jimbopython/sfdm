@@ -21,5 +21,6 @@ namespace sfdm {
 
     private:
         LibdmtxCodeReader m_libdmtxCodeReader;
+        ZXingCodeReader m_zxingCodeReader;
     };
 } // namespace sfdm

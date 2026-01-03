@@ -1,4 +1,6 @@
 #include <sfdm/libdmtx_zxing_combined_code_reader.hpp>
+
+#include <future>
 #include <stdexcept>
 #include <thread>
 
@@ -10,58 +12,62 @@ namespace {
         size_t height;
     };
 
-    void fillRectFromPoints(const sfdm::Point &p1, const sfdm::Point &p2, const sfdm::Point &p3, const sfdm::Point &p4,
-                            sfdm::ImageView &view) {
-        // 1. Compute bounds
-        auto minX = std::min({p1.x, p2.x, p3.x, p4.x});
-        auto maxX = std::max({p1.x, p2.x, p3.x, p4.x});
-        auto minY = std::min({p1.y, p2.y, p3.y, p4.y});
-        auto maxY = std::max({p1.y, p2.y, p3.y, p4.y});
+    template<size_t distance = 5>
+    bool within5Pixels(const sfdm::Point &p1, const sfdm::Point &p2) {
+        const auto dx = p1.x - p2.x;
+        const auto dy = p1.y - p2.y;
+        return dx * dx + dy * dy <= distance * distance;
+    }
 
-        // 2. Rect (x, y, w, h)
-        Rect r{minX, minY, maxX - minX, maxY - minY};
-
-        if (r.width <= 0 || r.height <= 0)
-            return;
-
-        // 3. Clip to framebuffer
-        auto startX = r.x;
-        auto startY = r.y;
-        auto endX = std::min(view.width, r.x + r.width);
-        auto endY = std::min(view.height, r.y + r.height);
-
-        auto rowPixels = endX - startX;
-        if (rowPixels <= 0)
-            return;
-
-        // 4. Fill (memset per row)
-        for (int y = startY; y < endY; ++y) {
-            auto *row = view.data + y * view.width + startX;
-            std::memset(row, 0, rowPixels);
+    bool diagonallyOppositeMatch(const sfdm::CodePosition &q1, const sfdm::CodePosition &q2) {
+        if (within5Pixels(q1.bottomLeft, q2.bottomLeft) && within5Pixels(q1.topRight, q2.topRight)) {
+            return true;
         }
+
+        return within5Pixels(q1.topLeft, q2.topLeft) && within5Pixels(q1.bottomRight, q2.bottomRight);
+    }
+    std::vector<sfdm::DecodeResult> filterDuplicates(const std::vector<sfdm::DecodeResult> &input) {
+        std::vector<sfdm::DecodeResult> result;
+
+        for (const auto &q: input) {
+            bool isDuplicate = false;
+
+            for (const auto &existing: result) {
+                if (diagonallyOppositeMatch(q.position, existing.position)) {
+                    isDuplicate = true;
+                    break;
+                }
+            }
+
+            if (!isDuplicate) {
+                result.push_back(q);
+            }
+        }
+
+        return result;
     }
 } // namespace
 
 namespace sfdm {
     std::vector<DecodeResult> LibdmtxZXingCombinedCodeReader::decode(const ImageView &image) const {
-        auto results = m_libdmtxCodeReader.decode(image);
-        if (results.size() == getMaximumNumberOfCodesToDetect()) {
-            return results;
-        }
+        std::promise<std::vector<DecodeResult>> promiseLibdmtx;
+        auto futureLibdmtx = promiseLibdmtx.get_future();
+        std::promise<std::vector<DecodeResult>> promiseZXing;
+        auto futureZXing = promiseZXing.get_future();
 
-        auto tmpBuffer = std::make_unique<uint8_t[]>(image.width * image.height);
-        std::memcpy(tmpBuffer.get(), image.data, image.width * image.height);
+        std::jthread libdmtxThread([&image, this, p = std::move(promiseLibdmtx)]() mutable {
+            p.set_value(m_libdmtxCodeReader.decode(image));
+        });
+        std::jthread zxingThread([&image, this, p = std::move(promiseZXing)]() mutable {
+            p.set_value(m_zxingCodeReader.decode(image));
+        });
 
-        ImageView imageCopy{image.width, image.height, tmpBuffer.get()};
-        for (const auto &result: results) {
-            fillRectFromPoints(result.position.topLeft, result.position.topRight, result.position.bottomLeft,
-                               result.position.bottomRight, imageCopy);
-        }
-        ZXingCodeReader libdmtxReader;
-        libdmtxReader.setMaximumNumberOfCodesToDetect(getMaximumNumberOfCodesToDetect() - results.size());
-        const auto libdmtxResults = libdmtxReader.decode(imageCopy);
+        auto results = futureLibdmtx.get();
+        auto libdmtxResults = futureZXing.get();
+
         results.insert(results.end(), libdmtxResults.begin(), libdmtxResults.end());
-        return results;
+
+        return filterDuplicates(results);
     }
 
     void LibdmtxZXingCombinedCodeReader::setTimeout(uint32_t msec) {
@@ -72,6 +78,7 @@ namespace sfdm {
 
     void LibdmtxZXingCombinedCodeReader::setMaximumNumberOfCodesToDetect(uint32_t count) {
         m_libdmtxCodeReader.setMaximumNumberOfCodesToDetect(count);
+        m_zxingCodeReader.setMaximumNumberOfCodesToDetect(count);
     }
     uint32_t LibdmtxZXingCombinedCodeReader::getMaximumNumberOfCodesToDetect() const {
         return m_libdmtxCodeReader.getMaximumNumberOfCodesToDetect();

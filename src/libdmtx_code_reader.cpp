@@ -94,6 +94,10 @@ namespace sfdm {
 
         std::vector<DecodeResult> results;
         results.reserve(m_maximumNumberOfCodesToDetect);
+        std::vector<std::jthread> threads;
+        if (m_decodingFinishedCallback) {
+            threads.reserve(m_maximumNumberOfCodesToDetect);
+        }
 
         while (results.size() < m_maximumNumberOfCodesToDetect) {
             const auto [region, stopCause] = detectNext(decodeGuard.getDecoder());
@@ -109,7 +113,7 @@ namespace sfdm {
             const CodePosition position = getPosition(image, region);
             DecodeResult decodeResult{reinterpret_cast<const char *>(message->output), position};
             if (m_decodingFinishedCallback) {
-                std::thread(m_decodingFinishedCallback, decodeResult).detach();
+                threads.emplace_back(m_decodingFinishedCallback, decodeResult);
             }
             results.emplace_back(decodeResult);
         }

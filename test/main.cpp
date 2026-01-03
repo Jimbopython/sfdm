@@ -12,129 +12,179 @@
 #include "test_utils.hpp"
 
 // #define BUILD_FOR_PLOTS
+// #define PAINT_FOUND_CODES
 
-template<typename Callable>
-void testDecoding(const Callable &callable) {
-    const auto data = readDataMatrixFile("../_deps/images-src/annotations.txt");
-
-    SECTION("Single") {
-        for (const auto &entry: std::filesystem::directory_iterator("../_deps/images-src")) {
-            if (entry.is_regular_file() && entry.path().extension() == ".jpg") {
-                cv::Mat image = get_image(entry);
-
-                const auto fileName = entry.path().stem().string();
-                const auto it = data.find(fileName);
-                if (it == data.end()) {
-                    continue;
-                }
-                const auto currentData = it->second;
-                SECTION(fileName) {
-                    auto foundTexts = callable(image, fileName);
-                    const auto foundCount = foundTexts.size() - extraElementsCount(foundTexts, currentData);
+namespace {
+    auto getTexts(const auto &foundData) {
+        std::vector<std::string> foundTexts;
+        foundTexts.reserve(foundData.size());
+        std::ranges::transform(foundData.begin(), foundData.end(), std::back_inserter(foundTexts),
+                               [](const auto &result) {
+                                   auto text = result.text;
+                                   // some codes actually contain newlines, but annotations dont
+                                   std::erase(text, '\r');
+                                   std::replace(text.begin(), text.end(), '\n', ' ');
+                                   return text;
+                               });
+        return foundTexts;
+    }
+    void checkTexts(std::vector<std::string> foundText, const auto &currentData) {
+        const auto foundCount = foundText.size() - extraElementsCount(foundText, currentData);
+        std::vector<sfdm::Point> points;
+        points.reserve(foundText.size() * 4);
 #ifndef BUILD_FOR_PLOTS
-                    CHECK(foundCount == currentData.size());
+        CHECK(foundCount == currentData.size());
 #endif
-                    for (const auto &text: currentData) {
-                        const auto itText = std::find(foundTexts.begin(), foundTexts.end(), text);
-                        bool requirementTextFound = itText != foundTexts.end();
-                        CAPTURE(text);
-                        CHECK(requirementTextFound);
-                        if (itText != foundTexts.end()) {
-                            foundTexts.erase(itText);
-                        }
+        for (const auto &text: currentData) {
+            const auto itText = std::find(foundText.begin(), foundText.end(), text);
+            bool requirementTextFound = itText != foundText.end();
+            CAPTURE(text);
+            CHECK(requirementTextFound);
+            if (itText != foundText.end()) {
+                foundText.erase(itText);
+            }
+        }
+    }
+
+    auto getPositions(const auto &foundData) {
+        std::vector<sfdm::Point> points;
+        points.reserve(foundData.size() * 4);
+        for (const auto &code: foundData) {
+            const auto position = code.position;
+            points.emplace_back(code.position.topLeft);
+            points.emplace_back(code.position.topRight);
+            points.emplace_back(code.position.bottomRight);
+            points.emplace_back(code.position.bottomLeft);
+        }
+        std::ranges::sort(points);
+        return points;
+    }
+
+    void checkPositions(const std::vector<sfdm::Point> &points) {
+        constexpr int r2 = 5 * 5;
+
+        for (size_t i = 0; i < points.size(); ++i) {
+            for (size_t j = i + 1; j < points.size(); ++j) {
+                int dx = points[i].x - points[j].x;
+                int dy = points[i].y - points[j].y;
+                CHECK(dx * dx + dy * dy > r2);
+            }
+        }
+    }
+
+    template<typename Callable>
+    void testDecoding(const Callable &callable) {
+        const auto data = readDataMatrixFile("../_deps/images-src/annotations.txt");
+
+        SECTION("Single") {
+            for (const auto &entry: std::filesystem::directory_iterator("../_deps/images-src")) {
+                if (entry.is_regular_file() && entry.path().extension() == ".jpg") {
+                    cv::Mat image = get_image(entry);
+
+                    const auto fileName = entry.path().stem().string();
+                    const auto it = data.find(fileName);
+                    if (it == data.end()) {
+                        continue;
+                    }
+                    const auto currentData = it->second;
+                    SECTION(fileName) {
+                        auto foundCodes = callable(image, fileName, currentData.size());
+                        auto foundText = getTexts(foundCodes);
+                        checkTexts(foundText, currentData);
+#ifndef BUILD_FOR_PLOTS
+                        checkPositions(getPositions(foundCodes));
+#endif
                     }
                 }
             }
         }
-    }
-    SECTION("Overall") {
-        int foundTotal = 0;
-        int totalCodes = 0;
-        for (const auto &entry: std::filesystem::directory_iterator("../_deps/images-src")) {
-            if (entry.is_regular_file() && entry.path().extension() == ".jpg") {
-                cv::Mat image = get_image(entry);
+        SECTION("Overall") {
+            int foundTotal = 0;
+            int totalCodes = 0;
+            for (const auto &entry: std::filesystem::directory_iterator("../_deps/images-src")) {
+                if (entry.is_regular_file() && entry.path().extension() == ".jpg") {
+                    cv::Mat image = get_image(entry);
 
-                const auto fileName = entry.path().stem().string();
-                const auto it = data.find(fileName);
-                if (it == data.end()) {
-                    continue;
+                    const auto fileName = entry.path().stem().string();
+                    const auto it = data.find(fileName);
+                    if (it == data.end()) {
+                        continue;
+                    }
+                    const auto currentData = it->second;
+                    const auto foundCodes = callable(image, fileName, currentData.size());
+                    const auto foundTexts = getTexts(foundCodes);
+                    const auto foundCount = foundTexts.size() - extraElementsCount(foundTexts, currentData);
+                    foundTotal += foundCount;
+                    totalCodes += currentData.size();
                 }
-                const auto currentData = it->second;
-                const auto foundTexts = callable(image, fileName);
-                const auto foundCount = foundTexts.size() - extraElementsCount(foundTexts, currentData);
-                foundTotal += foundCount;
-                totalCodes += currentData.size();
             }
+            REQUIRE(foundTotal == totalCodes);
         }
-        REQUIRE(foundTotal == totalCodes);
     }
-}
 
-auto testReader(auto &reader, const cv::Mat &image, std::string libName, std::string codeName) {
+    auto testReader(auto &reader, const cv::Mat &image, std::string libName, std::string codeName) {
 #ifndef BUILD_FOR_PLOTS
-    std::vector<sfdm::DecodeResult> callbackData;
-    std::mutex dataMutex;
+        std::vector<sfdm::DecodeResult> callbackData;
+        std::mutex dataMutex;
 
-    if (reader.isDecodingFinishedCallbackSupported()) {
-        reader.setDecodingFinishedCallback([&](auto result) {
-            std::lock_guard lock(dataMutex);
-            callbackData.emplace_back(result);
-        });
-    }
+        if (reader.isDecodingFinishedCallbackSupported()) {
+            reader.setDecodingFinishedCallback([&](auto result) {
+                std::lock_guard lock(dataMutex);
+                callbackData.emplace_back(result);
+            });
+        }
 #endif
-    const auto foundData =
-            reader.decode({static_cast<size_t>(image.cols), static_cast<size_t>(image.rows), image.data});
+        const auto foundData =
+                reader.decode({static_cast<size_t>(image.cols), static_cast<size_t>(image.rows), image.data});
 #ifndef BUILD_FOR_PLOTS
-    if (reader.isDecodingFinishedCallbackSupported()) {
-        REQUIRE(foundData == callbackData);
-    }
+        if (reader.isDecodingFinishedCallbackSupported()) {
+            REQUIRE(foundData == callbackData);
+        }
+#endif
+#ifdef PAINT_FOUND_CODES
+        cv::Mat colorImage;
+        cv::cvtColor(image, colorImage, cv::COLOR_GRAY2BGR);
+        for (const auto &data: foundData) {
+            std::array cvData{
+                    cv::Point{static_cast<int>(data.position.topLeft.x), static_cast<int>(data.position.topLeft.y)},
+                    cv::Point{static_cast<int>(data.position.topRight.x), static_cast<int>(data.position.topRight.y)},
+                    cv::Point{static_cast<int>(data.position.bottomRight.x),
+                              static_cast<int>(data.position.bottomRight.y)},
+                    cv::Point{static_cast<int>(data.position.bottomLeft.x),
+                              static_cast<int>(data.position.bottomLeft.y)}};
+            cv::polylines(colorImage, cvData, true, cv::Scalar(0, 255, 0), 2);
+            cv::imwrite(std::format("{}_{}.png", codeName, libName), colorImage);
+        }
 #endif
 
-    cv::Mat colorImage;
-    cv::cvtColor(image, colorImage, cv::COLOR_GRAY2BGR);
-    for (const auto &data: foundData) {
-        std::array cvData{
-                cv::Point{static_cast<int>(data.position.topLeft.x), static_cast<int>(data.position.topLeft.y)},
-                cv::Point{static_cast<int>(data.position.topRight.x), static_cast<int>(data.position.topRight.y)},
-                cv::Point{static_cast<int>(data.position.bottomRight.x), static_cast<int>(data.position.bottomRight.y)},
-                cv::Point{static_cast<int>(data.position.bottomLeft.x), static_cast<int>(data.position.bottomLeft.y)}};
-        cv::polylines(colorImage, cvData, true, cv::Scalar(0, 255, 0), 2);
-        cv::imwrite(std::format("{}_{}.png", codeName, libName), colorImage);
+        return foundData;
     }
-
-    std::vector<std::string> foundTexts;
-    foundTexts.reserve(foundData.size());
-    std::ranges::transform(foundData.begin(), foundData.end(), std::back_inserter(foundTexts), [](const auto &result) {
-        auto text = result.text;
-        // some codes actually contain newlines, but annotations dont
-        std::erase(text, '\r');
-        std::replace(text.begin(), text.end(), '\n', ' ');
-        return text;
-    });
-    return foundTexts;
-}
+} // namespace
 
 TEST_CASE("LibDMTX Decoding") {
     const auto timeout = GENERATE_REF(from_range(std::vector{100, 200, 0}));
     SECTION(std::to_string(timeout) + "ms timeout") {
-        testDecoding([&](const cv::Mat &image, const std::string &codeName) {
+        testDecoding([&](const cv::Mat &image, const std::string &codeName, size_t expectedNumberOfCodes) {
             sfdm::LibdmtxCodeReader reader;
             reader.setTimeout(timeout);
+            reader.setMaximumNumberOfCodesToDetect(expectedNumberOfCodes);
             return testReader(reader, image, "libdmtx", codeName);
         });
     }
 }
 
 TEST_CASE("ZXing Decoding") {
-    testDecoding([](const cv::Mat &image, const std::string &codeName) {
+    testDecoding([](const cv::Mat &image, const std::string &codeName, size_t expectedNumberOfCodes) {
         sfdm::ZXingCodeReader reader;
+        reader.setMaximumNumberOfCodesToDetect(expectedNumberOfCodes);
         return testReader(reader, image, "zxing", codeName);
     });
 }
 
 TEST_CASE("Combined Decoding") {
-    testDecoding([](const cv::Mat &image, const std::string &codeName) {
+    testDecoding([](const cv::Mat &image, const std::string &codeName, size_t expectedNumberOfCodes) {
         sfdm::LibdmtxZXingCombinedCodeReader reader;
+        reader.setMaximumNumberOfCodesToDetect(expectedNumberOfCodes);
         return testReader(reader, image, "combined", codeName);
     });
 }
