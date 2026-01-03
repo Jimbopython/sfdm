@@ -4,10 +4,10 @@ sfdm is a library which targets to provide a fast, accurate and easy to use data
 
 # Usage
 
-There are two implementations to choose from:
+There are three implementations to choose from:
 
-A code reader based on [ZXing](https://github.com/zxing-cpp/zxing-cpp) and a code reader based on
-[libdmtx](https://github.com/dmtx/libdmtx).
+A code reader based on [ZXing](https://github.com/zxing-cpp/zxing-cpp), a code reader based on
+[libdmtx](https://github.com/dmtx/libdmtx) and a combination of both.
 
 ### ZXing code reader
 
@@ -27,6 +27,17 @@ std::cout << result.text << '\n';
 #include <iostream>
 sfdm::ImageView view{image.width, image.height, image.data};
 sfdm::LibdmtxCodeReader reader;
+sfdm::DecodeResult result = reader.decode(view);
+std::cout << result.text << '\n';
+```
+
+### Combined code reader
+
+```c++
+#include <sfdm/sfdm.hpp>
+#include <iostream>
+sfdm::ImageView view{image.width, image.height, image.data};
+sfdm::LibdmtxZXingCombinedCodeReader reader;
 sfdm::DecodeResult result = reader.decode(view);
 std::cout << result.text << '\n';
 ```
@@ -55,3 +66,7 @@ To build the sfdm library with conan use the following:
 cmake --preset=conan-<build_type>
 cmake --build --preset=conan-<build_type>
 ```
+
+# Detection results
+
+[See here](doc/detection_results.md)
