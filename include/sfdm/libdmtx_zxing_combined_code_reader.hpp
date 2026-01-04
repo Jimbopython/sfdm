@@ -19,8 +19,12 @@ namespace sfdm {
         void setDecodingFinishedCallback(std::function<void(DecodeResult)> callback) override;
         bool isDecodingFinishedCallbackSupported() override;
 
+        void setDoubleCheckZXing(bool value);
+        [[nodiscard]] bool getDoubleCheckZXing() const;
+
     private:
         LibdmtxCodeReader m_libdmtxCodeReader;
         ZXingCodeReader m_zxingCodeReader;
+        std::atomic<bool> m_doubleCheckZXing{true};
     };
 } // namespace sfdm

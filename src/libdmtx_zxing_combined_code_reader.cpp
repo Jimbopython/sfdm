@@ -26,48 +26,79 @@ namespace {
 
         return within5Pixels(q1.topLeft, q2.topLeft) && within5Pixels(q1.bottomRight, q2.bottomRight);
     }
-    std::vector<sfdm::DecodeResult> filterDuplicates(const std::vector<sfdm::DecodeResult> &input) {
-        std::vector<sfdm::DecodeResult> result;
+    std::vector<sfdm::DecodeResult> filterDuplicates(const std::vector<sfdm::DecodeResult> &input1,
+                                                     const std::vector<sfdm::DecodeResult> &input2) {
+        std::vector<sfdm::DecodeResult> results;
 
-        for (const auto &q: input) {
-            bool isDuplicate = false;
-
-            for (const auto &existing: result) {
-                if (diagonallyOppositeMatch(q.position, existing.position)) {
-                    isDuplicate = true;
-                    break;
-                }
-            }
-
+        for (const sfdm::DecodeResult &result: input1) {
+            bool isDuplicate = std::ranges::find_if(input2, [&](const sfdm::DecodeResult &res) {
+                                   return diagonallyOppositeMatch(res.position, result.position);
+                               }) != input2.end();
             if (!isDuplicate) {
-                result.push_back(q);
+                results.emplace_back(result);
             }
         }
 
-        return result;
+        return results;
     }
 } // namespace
 
 namespace sfdm {
     std::vector<DecodeResult> LibdmtxZXingCombinedCodeReader::decode(const ImageView &image) const {
-        std::promise<std::vector<DecodeResult>> promiseLibdmtx;
-        auto futureLibdmtx = promiseLibdmtx.get_future();
-        std::promise<std::vector<DecodeResult>> promiseZXing;
-        auto futureZXing = promiseZXing.get_future();
+        const auto maximumNumberOfCodesToDetect = getMaximumNumberOfCodesToDetect();
+        std::vector<DecodeResult> results;
+        results.reserve(maximumNumberOfCodesToDetect);
 
-        std::jthread libdmtxThread([&image, this, p = std::move(promiseLibdmtx)]() mutable {
-            p.set_value(m_libdmtxCodeReader.decode(image));
+        std::mutex resultsMutex;
+        std::atomic zXingCount = 0;
+
+        std::thread libdmtxThread([&] {
+            auto stream = m_libdmtxCodeReader.decodeStream(image);
+            int checkedCount = 0;
+            bool doubleCheckZXing = m_doubleCheckZXing;
+            while (stream.next()) {
+                const auto result = stream.value();
+                std::lock_guard lock(resultsMutex);
+                if (!doubleCheckZXing && results.size() == maximumNumberOfCodesToDetect) {
+                    return;
+                }
+                const auto it = std::ranges::find_if(results, [&](const DecodeResult &res) {
+                    return diagonallyOppositeMatch(res.position, result.position);
+                });
+                if (results.end() == it) {
+                    results.emplace_back(result);
+                } else {
+                    if (doubleCheckZXing) {
+                        // we cannot trust zxing decoding. some results are wrong. libdmtx works better.
+                        if (it->text != result.text) {
+                            *it = result;
+                        }
+                        if (results.size() == maximumNumberOfCodesToDetect && ++checkedCount == zXingCount) {
+                            return;
+                        }
+                    }
+                }
+                if (!doubleCheckZXing && results.size() == maximumNumberOfCodesToDetect) {
+                    return;
+                }
+            }
         });
-        std::jthread zxingThread([&image, this, p = std::move(promiseZXing)]() mutable {
-            p.set_value(m_zxingCodeReader.decode(image));
+        std::thread zxingThread([&] {
+            const auto result = m_zxingCodeReader.decode(image);
+            std::lock_guard lock(resultsMutex);
+            if (results.size() == maximumNumberOfCodesToDetect) {
+                return;
+            }
+            const auto filteredResults = filterDuplicates(result, results);
+            zXingCount = results.size();
+            results.insert(results.end(), filteredResults.begin(), filteredResults.end());
         });
 
-        auto results = futureLibdmtx.get();
-        auto libdmtxResults = futureZXing.get();
+        zxingThread.join();
+        libdmtxThread.join();
+        results.shrink_to_fit();
 
-        results.insert(results.end(), libdmtxResults.begin(), libdmtxResults.end());
-
-        return filterDuplicates(results);
+        return results;
     }
 
     void LibdmtxZXingCombinedCodeReader::setTimeout(uint32_t msec) { m_libdmtxCodeReader.setTimeout(msec); }
@@ -86,4 +117,6 @@ namespace sfdm {
         throw std::runtime_error("LibdmtxZXingCombinedCodeReader::setDecodingFinishedCallback is not supported.");
     }
     bool LibdmtxZXingCombinedCodeReader::isDecodingFinishedCallbackSupported() { return false; }
+    void LibdmtxZXingCombinedCodeReader::setDoubleCheckZXing(bool value) { m_doubleCheckZXing = value; }
+    bool LibdmtxZXingCombinedCodeReader::getDoubleCheckZXing() const { return m_doubleCheckZXing; }
 } // namespace sfdm
