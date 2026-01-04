@@ -54,6 +54,9 @@ namespace sfdm {
     bool ZXingCodeReader::isTimeoutSupported() { return false; }
 
     void ZXingCodeReader::setMaximumNumberOfCodesToDetect(uint32_t count) {
+        if (count > 255) {
+            throw std::runtime_error{"maximum number of codes cannot exceed 255!"};
+        }
         m_impl->options.setMaxNumberOfSymbols(count);
     }
     uint32_t ZXingCodeReader::getMaximumNumberOfCodesToDetect() const { return m_impl->options.maxNumberOfSymbols(); }
