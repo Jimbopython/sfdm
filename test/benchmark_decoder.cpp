@@ -54,8 +54,28 @@ TEST_CASE("Decoder benchmark") {
     };
 
     counter = 0;
-    BENCHMARK_ADVANCED("Combined")(Catch::Benchmark::Chronometer meter) {
+    BENCHMARK_ADVANCED("Combined 0ms")(Catch::Benchmark::Chronometer meter) {
         sfdm::LibdmtxZXingCombinedCodeReader combinedReader;
+        meter.measure([&] {
+            combinedReader.setMaximumNumberOfCodesToDetect(codeCounts[counter % codeCounts.size()]);
+            return combinedReader.decode(images[counter++ % images.size()]);
+        });
+    };
+
+    counter = 0;
+    BENCHMARK_ADVANCED("Combined 100ms")(Catch::Benchmark::Chronometer meter) {
+        sfdm::LibdmtxZXingCombinedCodeReader combinedReader;
+        combinedReader.setTimeout(100);
+        meter.measure([&] {
+            combinedReader.setMaximumNumberOfCodesToDetect(codeCounts[counter % codeCounts.size()]);
+            return combinedReader.decode(images[counter++ % images.size()]);
+        });
+    };
+
+    counter = 0;
+    BENCHMARK_ADVANCED("Combined 200ms")(Catch::Benchmark::Chronometer meter) {
+        sfdm::LibdmtxZXingCombinedCodeReader combinedReader;
+        combinedReader.setTimeout(200);
         meter.measure([&] {
             combinedReader.setMaximumNumberOfCodesToDetect(codeCounts[counter % codeCounts.size()]);
             return combinedReader.decode(images[counter++ % images.size()]);

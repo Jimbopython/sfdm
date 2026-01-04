@@ -10,11 +10,11 @@ namespace sfdm {
         [[nodiscard]] std::vector<DecodeResult> decode(const ImageView &image) const override;
 
         void setTimeout(uint32_t msec) override;
-
+        [[nodiscard]] uint32_t getTimeout() const override;
         bool isTimeoutSupported() override;
 
         void setMaximumNumberOfCodesToDetect(uint32_t count) override;
-        uint32_t getMaximumNumberOfCodesToDetect() const override;
+        [[nodiscard]] uint32_t getMaximumNumberOfCodesToDetect() const override;
 
         void setDecodingFinishedCallback(std::function<void(DecodeResult)> callback) override;
         bool isDecodingFinishedCallbackSupported() override;

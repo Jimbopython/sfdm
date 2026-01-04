@@ -173,9 +173,13 @@ TEST_CASE("ZXing Decoding") {
 }
 
 TEST_CASE("Combined Decoding") {
-    testDecoding([](const cv::Mat &image, const std::string &codeName, size_t expectedNumberOfCodes) {
-        sfdm::LibdmtxZXingCombinedCodeReader reader;
-        reader.setMaximumNumberOfCodesToDetect(expectedNumberOfCodes);
-        return testReader(reader, image, "combined", codeName);
-    });
+    const auto timeout = GENERATE_REF(from_range(std::vector{100, 200, 0}));
+    SECTION(std::to_string(timeout) + "ms timeout") {
+        testDecoding([&](const cv::Mat &image, const std::string &codeName, size_t expectedNumberOfCodes) {
+            sfdm::LibdmtxZXingCombinedCodeReader reader;
+            reader.setTimeout(timeout);
+            reader.setMaximumNumberOfCodesToDetect(expectedNumberOfCodes);
+            return testReader(reader, image, "combined", codeName);
+        });
+    }
 }

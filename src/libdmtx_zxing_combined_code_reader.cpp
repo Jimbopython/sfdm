@@ -70,11 +70,10 @@ namespace sfdm {
         return filterDuplicates(results);
     }
 
-    void LibdmtxZXingCombinedCodeReader::setTimeout(uint32_t msec) {
-        throw std::runtime_error("LibdmtxZXingCombinedCodeReader::setTimeout is not supported.");
-    }
+    void LibdmtxZXingCombinedCodeReader::setTimeout(uint32_t msec) { m_libdmtxCodeReader.setTimeout(msec); }
+    uint32_t LibdmtxZXingCombinedCodeReader::getTimeout() const { return m_libdmtxCodeReader.getTimeout(); }
 
-    bool LibdmtxZXingCombinedCodeReader::isTimeoutSupported() { return false; }
+    bool LibdmtxZXingCombinedCodeReader::isTimeoutSupported() { return true; }
 
     void LibdmtxZXingCombinedCodeReader::setMaximumNumberOfCodesToDetect(uint32_t count) {
         m_libdmtxCodeReader.setMaximumNumberOfCodesToDetect(count);

@@ -124,6 +124,7 @@ namespace sfdm {
     }
 
     void LibdmtxCodeReader::setTimeout(uint32_t msec) { m_timeoutMSec = msec; }
+    uint32_t LibdmtxCodeReader::getTimeout() const { return m_timeoutMSec; }
 
     bool LibdmtxCodeReader::isTimeoutSupported() { return true; }
 

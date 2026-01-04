@@ -49,6 +49,7 @@ namespace sfdm {
     }
 
     void ZXingCodeReader::setTimeout(uint32_t msec) { throw std::runtime_error{"setTimeout is not supported!"}; }
+    uint32_t ZXingCodeReader::getTimeout() const { throw std::runtime_error{"getTimeout is not supported!"}; }
 
     bool ZXingCodeReader::isTimeoutSupported() { return false; }
 

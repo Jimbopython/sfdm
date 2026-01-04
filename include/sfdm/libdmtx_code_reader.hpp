@@ -14,8 +14,12 @@ namespace sfdm {
     public:
         [[nodiscard]] std::vector<DecodeResult> decode(const ImageView &image) const override;
 
+        /*!
+         * Note: 0 is until really nothing can be found
+         * @param msec
+         */
         void setTimeout(uint32_t msec) override;
-
+        [[nodiscard]] uint32_t getTimeout() const override;
         bool isTimeoutSupported() override;
 
         void setMaximumNumberOfCodesToDetect(uint32_t count) override;
@@ -38,8 +42,7 @@ namespace sfdm {
         [[nodiscard]] std::shared_ptr<DmtxMessage_struct>
         decode(const std::shared_ptr<DmtxDecode_struct> &decoder,
                const std::shared_ptr<DmtxRegion_struct> &region) const;
-
-        uint32_t m_timeoutMSec{};
+        uint32_t m_timeoutMSec{200};
         uint32_t m_maximumNumberOfCodesToDetect{255};
         std::function<void(DecodeResult)> m_decodingFinishedCallback{};
     };
