@@ -56,6 +56,7 @@ TEST_CASE("Decoder benchmark") {
     counter = 0;
     BENCHMARK_ADVANCED("Combined 0ms")(Catch::Benchmark::Chronometer meter) {
         sfdm::LibdmtxZXingCombinedCodeReader combinedReader;
+        combinedReader.setTimeout(0);
         meter.measure([&] {
             combinedReader.setMaximumNumberOfCodesToDetect(codeCounts[counter % codeCounts.size()]);
             return combinedReader.decode(images[counter++ % images.size()]);
@@ -85,6 +86,7 @@ TEST_CASE("Decoder benchmark") {
     counter = 0;
     BENCHMARK_ADVANCED(std::format("Libdmtx 0ms"))(Catch::Benchmark::Chronometer meter) {
         sfdm::LibdmtxCodeReader dmtxCodeReader;
+        dmtxCodeReader.setTimeout(0);
         meter.measure([&] {
             dmtxCodeReader.setMaximumNumberOfCodesToDetect(codeCounts[counter % codeCounts.size()]);
             return dmtxCodeReader.decode(images[counter++ % images.size()]);

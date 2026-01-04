@@ -21,6 +21,8 @@ There are 111 codes to detect.
 | LibdmtxCodeReader              | 80       | 100ms   | 72%        |
 | LibdmtxCodeReader              | 82       | 200ms   | 73%        |
 | LibdmtxCodeReader              | 85       | 0ms     | 76%        |
+| LibdmtxZXingCombinedCodeReader | 94       | 100ms   | 85%        |
+| LibdmtxZXingCombinedCodeReader | 95       | 200ms   | 86%        |
 | LibdmtxZXingCombinedCodeReader | 95       | 0ms     | 86%        |
 
 ## Result for each code
@@ -42,4 +44,8 @@ detected codes.
 
 ## Combined detection on all codes
 
-![](plots/Combined_None.png)
+![](plots/Combined_100ms.png)
+
+![](plots/Combined_200ms.png)
+
+![](plots/Combined_0ms.png)

@@ -7,3 +7,5 @@
 | LibdmtxCodeReader              | 100ms   | 37ms   | 49ms      |
 | LibdmtxCodeReader              | 200ms   | 55ms   | 83 ms     |
 | LibdmtxZXingCombinedCodeReader | 0ms     | 300ms  | 860ms     |
+| LibdmtxZXingCombinedCodeReader | 100ms   | 38ms   | 49ms      |
+| LibdmtxZXingCombinedCodeReader | 200ms   | 56ms   | 83ms      |

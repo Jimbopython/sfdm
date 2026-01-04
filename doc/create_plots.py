@@ -43,7 +43,7 @@ def do_plot_work(entries, lib, time_label=None):
 def plot_overall(data):
     result = {}
     for lib, value in data.items():
-        if lib == 'LibDMTX':
+        if lib == 'LibDMTX' or lib == 'Combined':
             for timeout, vals in value.items():
                 result[f"{lib}_{timeout}"] = vals
         else:
@@ -82,10 +82,14 @@ def plot_success_rates(data):
             "200ms": {}
         },
         "ZXing": {},
-        "Combined": {}
+        "Combined": {
+            "0ms": {},
+            "100ms": {},
+            "200ms": {}
+        }
     }
     for lib, entries in data.items():
-        if lib == "LibDMTX":
+        if lib == "LibDMTX" or lib == "Combined":
             for time_label, a in entries.items():
                 overalls[lib][time_label] = do_plot_work(a, lib, time_label)
         else:
@@ -135,39 +139,42 @@ def main():
     root = tree.getroot()
 
     data = {
-        "LibDMTX":
-            {
-                "0ms": {},
-                "100ms": {},
-                "200ms": {},
-            },
+        "LibDMTX": {
+            "0ms": {},
+            "100ms": {},
+            "200ms": {},
+        },
         "ZXing": {},
-        "Combined": {}
+        "Combined": {
+            "0ms": {},
+            "100ms": {},
+            "200ms": {}
+        }
     }
 
     for testcase in root.findall("TestCase"):
         for section in testcase.findall("Section"):
-            timeout_name = section.get("name")
-            if "timeout" in timeout_name:
-                if "100ms" in timeout_name:
-                    timeout = "100ms"
-                elif "200ms" in timeout_name:
-                    timeout = "200ms"
-                elif "0ms" in timeout_name:
-                    timeout = "0ms"
+            if "LibDMTX" in testcase.get("name") or "Combined" in testcase.get("name"):
+                timeout_name = section.get("name")
+                if "timeout" in timeout_name:
+                    if "100ms" in timeout_name:
+                        timeout = "100ms"
+                    elif "200ms" in timeout_name:
+                        timeout = "200ms"
+                    elif "0ms" in timeout_name:
+                        timeout = "0ms"
 
-                name, successes, failures = get_data_from_xml(section)
+                    name, successes, failures = get_data_from_xml(section)
 
-                if name is not None:
-                    data["LibDMTX"][timeout][name] = (successes, failures)
+                    if name is not None:
+                        if "LibDMTX" in testcase.get("name"):
+                            data["LibDMTX"][timeout][name] = (successes, failures)
+                        elif "Combined" in testcase.get("name"):
+                            data["Combined"][timeout][name] = (successes, failures)
             elif "ZXing" in testcase.get("name"):
                 name, successes, failures = get_data_from_xml(section)
                 if name is not None:
                     data["ZXing"][name] = (successes, failures)
-            elif "Combined" in testcase.get("name"):
-                name, successes, failures = get_data_from_xml(section)
-                if name is not None:
-                    data["Combined"][name] = (successes, failures)
 
     plot_success_rates(data)
 
