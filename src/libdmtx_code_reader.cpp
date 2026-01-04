@@ -90,8 +90,6 @@ namespace sfdm {
     }
 
     std::vector<DecodeResult> LibdmtxCodeReader::decode(const ImageView &image) const {
-        DecodeGuard decodeGuard(image);
-
         std::vector<DecodeResult> results;
         results.reserve(m_maximumNumberOfCodesToDetect);
         std::vector<std::jthread> threads;
@@ -99,19 +97,10 @@ namespace sfdm {
             threads.reserve(m_maximumNumberOfCodesToDetect);
         }
 
-        while (results.size() < m_maximumNumberOfCodesToDetect) {
-            const auto [region, stopCause] = detectNext(decodeGuard.getDecoder());
-            // stopCause can be NotFound, but a valid region is returned, which may actually contain a valid code.
-            if (!region && stopCause != StopCause::ScanSuccess) {
-                break;
-            }
+        auto stream = decodeStream(image);
 
-            const auto message = decode(decodeGuard.getDecoder(), region);
-            if (!message) {
-                continue;
-            }
-            const CodePosition position = getPosition(image, region);
-            DecodeResult decodeResult{reinterpret_cast<const char *>(message->output), position};
+        while (stream.next()) {
+            const auto decodeResult = stream.value();
             if (m_decodingFinishedCallback) {
                 threads.emplace_back(m_decodingFinishedCallback, decodeResult);
             }
@@ -121,6 +110,29 @@ namespace sfdm {
         results.shrink_to_fit();
 
         return results;
+    }
+
+    ResultStream LibdmtxCodeReader::decodeStream(const ImageView &image) const {
+        DecodeGuard decodeGuard(image);
+
+        size_t detectedCodes = 0;
+        while (detectedCodes < m_maximumNumberOfCodesToDetect) {
+            const auto [region, stopCause] = detectNext(decodeGuard.getDecoder());
+            // stopCause can be NotFound, but a valid region is returned, which may actually contain a valid code.
+            if (!region && stopCause != StopCause::ScanSuccess) {
+                co_return;
+            }
+
+            const auto message = decode(decodeGuard.getDecoder(), region);
+            if (!message) {
+                continue;
+            }
+            const CodePosition position = getPosition(image, region);
+            DecodeResult decodeResult{reinterpret_cast<const char *>(message->output), position};
+
+            ++detectedCodes;
+            co_yield decodeResult;
+        }
     }
 
     void LibdmtxCodeReader::setTimeout(uint32_t msec) { m_timeoutMSec = msec; }

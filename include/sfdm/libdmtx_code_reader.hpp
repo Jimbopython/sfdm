@@ -13,6 +13,7 @@ namespace sfdm {
     class LibdmtxCodeReader : public ICodeReader {
     public:
         [[nodiscard]] std::vector<DecodeResult> decode(const ImageView &image) const override;
+        ResultStream decodeStream(const ImageView &image) const;
 
         /*!
          * Note: 0 is until really nothing can be found
