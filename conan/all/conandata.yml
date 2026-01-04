@@ -1,4 +1,4 @@
 sources:
-  "0.0.2":
-    url: "https://github.com/Jimbopython/sfdm/archive/refs/tags/v0.0.2.tar.gz"
-    sha256: "f1ee38b46d744d280da487fc926f28dc532647883b07967b1f90372fb7b925bf"
+  "0.0.3":
+    url: "https://github.com/Jimbopython/sfdm/archive/refs/tags/v0.0.3.tar.gz"
+    sha256: "cba19f84eadbceba1498944cfa1231759939e6dbd7449c443a59e273df0e5da4"
