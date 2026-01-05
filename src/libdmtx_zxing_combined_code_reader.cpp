@@ -5,13 +5,6 @@
 #include <thread>
 
 namespace {
-    struct Rect {
-        size_t x;
-        size_t y;
-        size_t width;
-        size_t height;
-    };
-
     template<size_t distance = 5>
     bool within5Pixels(const sfdm::Point &p1, const sfdm::Point &p2) {
         const auto dx = p1.x - p2.x;
@@ -54,7 +47,7 @@ namespace sfdm {
 
         std::thread libdmtxThread([&] {
             auto stream = m_libdmtxCodeReader.decodeStream(image);
-            int checkedCount = 0;
+            size_t checkedCount = 0;
             bool doubleCheckZXing = m_doubleCheckZXing;
             while (stream.next()) {
                 const auto result = stream.value();

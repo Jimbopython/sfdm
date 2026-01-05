@@ -1,5 +1,6 @@
 #pragma once
 #include <coroutine>
+#include <cstdint>
 #include <string>
 #include <utility>
 

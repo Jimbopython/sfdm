@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <sfdm/icode_reader.hpp>
 #include <sfdm/libdmtx_code_reader.hpp>
 #include <sfdm/zxing_code_reader.hpp>
