@@ -17,18 +17,39 @@ namespace sfdm {
     class LibdmtxCodeReader : public ICodeReader {
     public:
         /*!
-         * Decode damatrix codes in the provided image.
-         * This is a blocking call until the decoding of all damatrix codes in the image are finished.
-         * It is recommended to set the number of damatrix codes that can be detected, because then this function will
+         * Decode datamatrix codes in the provided image.
+         * This is a blocking call until the decoding of all datamatrix codes in the image are finished.
+         * It is recommended to set the number of datamatrix codes that can be detected, because then this function will
          * return faster. How fast the function "gives up" searching for codes in the image, can be tuned with the
          * setTimeout function.
-         * @param image image used for damatrix code detection and decoding
+         * @param image image used for datamatrix code detection and decoding
          * @return Decoded results that were found in the image
          */
         [[nodiscard]] std::vector<DecodeResult> decode(const ImageView &image) const override;
+
+        /*!
+         * Decode datamatrix codes in the provided image.
+         * This is a blocking call until the decoding of all datamatrix codes in the image are finished. However,
+         * results can be queried faster by using the callback.
+         * It is recommended to set the number of datamatrix codes that can be detected, because then this function will
+         * return faster. How fast the function "gives up" searching for codes in the image, can be tuned with the
+         * setTimeout function.
+         * @param image image used for datamatrix code detection and decoding
+         * @param callback callback function that will be called when a DecodeResult is ready
+         * @return Decoded results that were found in the image
+         */
         [[nodiscard]] std::vector<DecodeResult> decode(const ImageView &image,
                                                        std::function<void(DecodeResult)> callback) const override;
 
+        /*!
+         * Decode datamatrix codes in the provided image.
+         * This is a coroutine generator, that yields a result and suspends at that point until called again.
+         * It is recommended to set the number of datamatrix codes that can be detected, because then this function will
+         * return faster. How fast the function "gives up" searching for codes in the image, can be tuned with the
+         * setTimeout function.
+         * @param image image used for datamatrix code detection and decoding
+         * @return Result stream for consuming
+         */
         [[nodiscard]] ResultStream decodeStream(const ImageView &image) const;
 
         /*!
