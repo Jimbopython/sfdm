@@ -1,5 +1,5 @@
 #pragma once
-#include <atomic>
+#include <mutex>
 #include <sfdm/icode_reader.hpp>
 #include <sfdm/libdmtx_code_reader.hpp>
 #include <sfdm/zxing_code_reader.hpp>
@@ -23,6 +23,8 @@ namespace sfdm {
          */
         [[nodiscard]] std::vector<DecodeResult> decode(const ImageView &image) const override;
 
+        void libdmtxWorker(const ImageView &image, std::mutex &resultsMutex, std::vector<DecodeResult> &results,
+                           size_t maximumNumberOfCodesToDetect, bool rotated) const;
         /*!
          * Decode datamatrix codes in the provided image.
          * This is a blocking call until the decoding of all datamatrix codes in the image are finished. However,
@@ -64,6 +66,6 @@ namespace sfdm {
     private:
         LibdmtxCodeReader m_libdmtxCodeReader;
         ZXingCodeReader m_zxingCodeReader;
-        std::atomic<bool> m_doubleCheckZXing{true};
+        bool m_doubleCheckZXing{true};
     };
 } // namespace sfdm

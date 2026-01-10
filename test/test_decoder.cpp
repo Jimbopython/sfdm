@@ -184,3 +184,22 @@ TEST_CASE("Combined Decoding") {
         });
     }
 }
+
+TEST_CASE("Foo") {
+    auto rotate = [](const sfdm::ImageView &input, const sfdm::ImageView &output) {
+        for (int y = 0; y < input.height; ++y) {
+            const uint8_t *srcRow = input.data + (input.height - 1 - y) * input.width;
+            uint8_t *dstRow = output.data + y * output.width;
+
+            for (int x = 0; x < input.width; ++x) {
+                dstRow[x] = srcRow[input.width - 1 - x];
+            }
+        }
+    };
+    auto [image, _] = getImagesFromFiles()[0];
+
+    auto imageCopy = image.clone();
+    rotate(sfdm::ImageView{static_cast<size_t>(image.cols), static_cast<size_t>(image.rows), image.data},
+           sfdm::ImageView{static_cast<size_t>(imageCopy.cols), static_cast<size_t>(imageCopy.rows), imageCopy.data});
+    cv::imwrite("foo.png", imageCopy);
+}

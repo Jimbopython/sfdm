@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <array>
+#include <mutex>
 #include <span>
 #include <stdexcept>
 #include <thread>
@@ -58,6 +59,21 @@ namespace {
                 sfdm::Point{roundToNearest(topLeft.X), invertYAxis(image.height, roundToNearest(topLeft.Y))},
                 sfdm::Point{roundToNearest(topRight.X), invertYAxis(image.height, roundToNearest(topRight.Y))},
                 sfdm::Point{roundToNearest(bottomRight.X), invertYAxis(image.height, roundToNearest(bottomRight.Y))}};
+    }
+
+    template<size_t distance = 5>
+    bool within5Pixels(const sfdm::Point &p1, const sfdm::Point &p2) {
+        const auto dx = p1.x - p2.x;
+        const auto dy = p1.y - p2.y;
+        return dx * dx + dy * dy <= distance * distance;
+    }
+
+    bool diagonallyOppositeMatch(const sfdm::CodePosition &q1, const sfdm::CodePosition &q2) {
+        if (within5Pixels(q1.bottomLeft, q2.bottomLeft) && within5Pixels(q1.topRight, q2.topRight)) {
+            return true;
+        }
+
+        return within5Pixels(q1.topLeft, q2.topLeft) && within5Pixels(q1.bottomRight, q2.bottomRight);
     }
 } // namespace
 
