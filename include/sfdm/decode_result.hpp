@@ -30,6 +30,7 @@ namespace sfdm {
         CodePosition &operator=(const CodePosition &other) = default;
         CodePosition &operator=(CodePosition &&other) noexcept = default;
     };
+    enum class ResultOrigin { ZXing, Libdmtx };
     struct DecodeResult {
         std::string text;
         CodePosition position{};

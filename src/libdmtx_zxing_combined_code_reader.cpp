@@ -19,16 +19,18 @@ namespace {
 
         return within5Pixels(q1.topLeft, q2.topLeft) && within5Pixels(q1.bottomRight, q2.bottomRight);
     }
-    std::vector<sfdm::DecodeResult> filterDuplicates(const std::vector<sfdm::DecodeResult> &input1,
-                                                     const std::vector<sfdm::DecodeResult> &input2) {
-        std::vector<sfdm::DecodeResult> results;
+    std::vector<std::tuple<sfdm::DecodeResult, sfdm::ResultOrigin, bool>>
+    filterDuplicates(const std::vector<sfdm::DecodeResult> &input1,
+                     const std::vector<std::tuple<sfdm::DecodeResult, sfdm::ResultOrigin, bool>> &input2) {
+        std::vector<std::tuple<sfdm::DecodeResult, sfdm::ResultOrigin, bool>> results;
 
         for (const sfdm::DecodeResult &result: input1) {
-            bool isDuplicate = std::ranges::find_if(input2, [&](const sfdm::DecodeResult &res) {
-                                   return diagonallyOppositeMatch(res.position, result.position);
+            bool isDuplicate = std::ranges::find_if(input2, [&](const auto &res) {
+                                   const auto decodeResult = std::get<0>(res);
+                                   return diagonallyOppositeMatch(decodeResult.position, result.position);
                                }) != input2.end();
             if (!isDuplicate) {
-                results.emplace_back(result);
+                results.emplace_back(result, sfdm::ResultOrigin::ZXing, false);
             }
         }
 
@@ -58,13 +60,13 @@ namespace {
 
         return {bottomLeft, topLeft, topRight, bottomRight};
     }
-    enum class ResultOrigin { ZXing, Libdmtx };
 } // namespace
 
 namespace sfdm {
-    void LibdmtxZXingCombinedCodeReader::libdmtxWorker(const ImageView &image, std::mutex &resultsMutex,
-                                                       std::vector<DecodeResult> &results,
-                                                       size_t maximumNumberOfCodesToDetect, bool rotatedImage) const {
+    void
+    LibdmtxZXingCombinedCodeReader::libdmtxWorker(const ImageView &image, std::mutex &resultsMutex,
+                                                  std::vector<std::tuple<DecodeResult, ResultOrigin, bool>> &results,
+                                                  size_t maximumNumberOfCodesToDetect, bool rotatedImage) const {
         (void) maximumNumberOfCodesToDetect;
         auto stream = m_libdmtxCodeReader.decodeStream(image);
 
@@ -74,20 +76,25 @@ namespace sfdm {
                 result.position = rotated(image, result.position);
             }
             std::lock_guard guard(resultsMutex);
-            const auto it = std::ranges::find_if(results, [&](const DecodeResult &res) {
-                return diagonallyOppositeMatch(res.position, result.position);
+            const auto it = std::ranges::find_if(results, [&](const std::tuple<DecodeResult, ResultOrigin, bool> &res) {
+                const auto decodeResult = std::get<0>(res);
+                return diagonallyOppositeMatch(decodeResult.position, result.position);
             });
+            const std::tuple res{result, ResultOrigin::Libdmtx, true};
             if (results.end() == it) {
-                results.emplace_back(result);
+                results.emplace_back(res);
             } else {
-                *it = result;
+                const auto isChecked = std::get<2>(*it);
+                if (!isChecked) {
+                    *it = res;
+                }
             }
         }
     }
 
     std::vector<DecodeResult> LibdmtxZXingCombinedCodeReader::decode(const ImageView &image) const {
         const auto maximumNumberOfCodesToDetect = getMaximumNumberOfCodesToDetect();
-        std::vector<DecodeResult> results;
+        std::vector<std::tuple<DecodeResult, ResultOrigin, bool>> results;
         results.reserve(maximumNumberOfCodesToDetect);
 
         std::mutex resultsMutex;
@@ -116,10 +123,14 @@ namespace sfdm {
 
         zxingThread.join();
         libdmtxThread.join();
-        results.shrink_to_fit();
+        std::vector<DecodeResult> decodeResults;
+        decodeResults.reserve(results.size());
+        std::ranges::transform(results, std::back_inserter(decodeResults),
+                               [](const auto &result) { return std::get<0>(result); });
 
-        return results;
-    } // namespace sfdm
+        return decodeResults;
+    }
+
     std::vector<DecodeResult> LibdmtxZXingCombinedCodeReader::decode(const ImageView &image,
                                                                      std::function<void(DecodeResult)> callback) const {
         (void) image;
